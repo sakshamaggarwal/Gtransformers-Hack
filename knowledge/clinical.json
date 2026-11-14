@@ -1,0 +1,57 @@
+[
+  {
+    "id": "E1", "topic": "anemia_rbc", "title": "Low RBC or hemoglobin: find the cause first",
+    "fact": "Low red blood cells or hemoglobin (anemia) has many causes: iron deficiency, low B12 or folate, blood loss, chronic disease, kidney disease or inherited conditions. A doctor usually checks a CBC, ferritin, B12 and folate before treating. Taking iron without a known deficiency can be harmful.",
+    "source": "NIH National Heart, Lung, and Blood Institute", "url": "https://www.nhlbi.nih.gov/health/anemia"
+  },
+  {
+    "id": "E2", "topic": "anemia_rbc", "title": "Iron: food sources and absorption",
+    "fact": "Heme iron (meat, poultry, fish) is absorbed best. Plant (non-heme) iron in lentils, beans, tofu, spinach and fortified cereals is absorbed better when eaten with vitamin C foods. Tea, coffee and calcium taken with meals reduce absorption. RDA: 18 mg a day for women 19 to 50, 8 mg for men; the upper limit is 45 mg a day unless a doctor prescribes more.",
+    "source": "NIH Office of Dietary Supplements, Iron fact sheet", "url": "https://ods.od.nih.gov/factsheets/Iron-Consumer/"
+  },
+  {
+    "id": "E3", "topic": "anemia_rbc", "title": "Vitamin B12 and folate also make red blood cells",
+    "fact": "B12 (in animal foods and fortified foods) and folate (leafy greens, beans, fortified grains) are needed to make red blood cells. Vegans, older adults and people on metformin or acid reducers are more likely to be low in B12. RDA: B12 2.4 mcg, folate 400 mcg DFE a day for adults.",
+    "source": "NIH Office of Dietary Supplements", "url": "https://ods.od.nih.gov/factsheets/VitaminB12-Consumer/"
+  },
+  {
+    "id": "E4", "topic": "immunity", "title": "What actually supports immunity",
+    "fact": "Recommended vaccines, enough sleep, regular physical activity, a varied diet with fruit and vegetables, not smoking and managing stress have the best evidence. Supplements help mainly when you are deficient (for example vitamin D or zinc).",
+    "source": "NIH National Center for Complementary and Integrative Health", "url": "https://www.nccih.nih.gov/health/using-dietary-supplements-wisely"
+  },
+  {
+    "id": "E5", "topic": "digestion", "title": "Everyday digestion basics",
+    "fact": "Fibre (25 to 30 g a day), enough water and regular activity help constipation. Smaller meals and not lying down after eating help reflux. See a doctor for red flags: blood in stool, black stools, unexplained weight loss, trouble swallowing, or symptoms that wake you at night.",
+    "source": "NIH National Institute of Diabetes and Digestive and Kidney Diseases", "url": "https://www.niddk.nih.gov/health-information/digestive-diseases"
+  },
+  {
+    "id": "E6", "topic": "sleep_stress", "title": "Sleep needs and sleep hygiene",
+    "fact": "Adults need 7 or more hours of sleep. Fixed sleep and wake times, less caffeine after noon, a dark cool room and no screens before bed help. Long-term insomnia is best treated with cognitive behavioral therapy for insomnia (CBT-I).",
+    "source": "NIH National Heart, Lung, and Blood Institute", "url": "https://www.nhlbi.nih.gov/health/sleep-deprivation"
+  },
+  {
+    "id": "E7", "topic": "blood_sugar", "title": "Lowering blood sugar: lifestyle first",
+    "fact": "For prediabetes, losing 5 to 7% of body weight and 150 minutes of brisk activity a week lowers the risk of type 2 diabetes by more than half. Fibre-rich, less refined-carb meals help. Never stop prescribed diabetes medicine without your doctor.",
+    "source": "NIH National Institute of Diabetes and Digestive and Kidney Diseases", "url": "https://www.niddk.nih.gov/health-information/diabetes"
+  },
+  {
+    "id": "E8", "topic": "heart_cholesterol", "title": "Lowering LDL cholesterol",
+    "fact": "Cut saturated and trans fats, eat more soluble fibre (oats, beans, psyllium), stay active, keep a healthy weight and don't smoke. Statins are the best-proven medicine when lifestyle is not enough or risk is high.",
+    "source": "American Heart Association", "url": "https://www.heart.org/en/health-topics/cholesterol"
+  },
+  {
+    "id": "E9", "topic": "joint_pain", "title": "Osteoarthritis: what helps",
+    "fact": "Regular low-impact exercise (walking, swimming, cycling), strengthening the muscles around the joint, weight loss if overweight and physical therapy have the best evidence. Sudden swelling, redness, fever or a joint you can't move needs prompt care.",
+    "source": "NIH National Institute of Arthritis and Musculoskeletal and Skin Diseases", "url": "https://www.niams.nih.gov/health-topics/osteoarthritis"
+  },
+  {
+    "id": "E10", "topic": "vitamin_d_bone", "title": "Vitamin D and calcium",
+    "fact": "RDA for vitamin D: 600 IU (15 mcg) a day for adults up to 70, 800 IU over 70; the upper limit is 4,000 IU a day unless prescribed. Calcium: 1,000 to 1,200 mg a day. A blood test (25-hydroxy vitamin D) shows if you are low. Weight-bearing exercise strengthens bones.",
+    "source": "NIH Office of Dietary Supplements", "url": "https://ods.od.nih.gov/factsheets/VitaminD-Consumer/"
+  },
+  {
+    "id": "E11", "topic": "supplements_general", "title": "Supplements are not FDA-approved before sale",
+    "fact": "In the US, supplements do not need FDA approval for safety or effectiveness before they are sold. Seals from USP, NSF or ConsumerLab show a product contains what the label says. Tell your doctor about every supplement, because many interact with medicines.",
+    "source": "NIH National Center for Complementary and Integrative Health", "url": "https://www.nccih.nih.gov/health/using-dietary-supplements-wisely"
+  }
+]
