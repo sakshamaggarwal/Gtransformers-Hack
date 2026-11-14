@@ -19,7 +19,8 @@ const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods
 export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   const q = new URL(req.url).searchParams.get("q");
-  if (!q) return Response.json({ error: "add ?q=your health question", knowledge_base: KB_STATS }, { status: 400, headers: CORS });
+  // No question: a health check (the front end uses it to detect a same-origin backend).
+  if (!q) return Response.json({ ok: true, usage: "add ?q=your health question", knowledge_base: KB_STATS }, { headers: CORS });
   const input = validateMessage(q);
   if (!input.ok) return Response.json({ error: input.error }, { status: 400, headers: CORS });
 

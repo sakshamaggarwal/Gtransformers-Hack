@@ -19,6 +19,7 @@
 //   7a Health question? Retrieve evidence:
 //        local knowledge base (clinical [E], scored community [C], Ayurveda [A])
 //        + live APIs in parallel (PubMed [P], ClinicalTrials [T], OpenFDA [F], StackExchange [Q], Reddit [R])
+//        + ranking: every fetched item scored, top 10 kept with source diversity (rank.mjs)
 //   7  Build the conversation history the model will see (this is the "memory")
 //   8  Call the model and check its answer format
 //   9  Force a caring reply if distress was detected; urgent note on red flags
@@ -123,11 +124,9 @@ export default async (req, context) => {
   const blocked = flags.distress ? null : policyBlock(input.text, flags.injection_suspected);
 
   // ---- Step 7a: add extra context (RAG or external API) --------------------------
-  // A simple "router" decides whether this question needs outside information:
-  //   - asks for current headlines        → call the Hacker News API (external.mjs)
-  //   - asks about the product / reviews  → retrieve matching reviews (rag.mjs)
-  //     (also for short follow-ups like "and the price?" right after a review answer)
-  //   - otherwise                         → no extra context
+  // Health question (or a short follow-up to one)? buildEvidence (evidence.mjs)
+  // fetches all six sources live, ranks them and keeps the top 10.
+  // Anything else gets no extra context and is declined by the model.
   // The extra context is put IN FRONT of the user's message for the model only.
   // It is not saved in the chat history; only which sources were used is saved.
   let extra = null;        // { type: "health", source, items: [...] }, returned to the browser
@@ -140,7 +139,7 @@ export default async (req, context) => {
   if (ev) {
     evidence = ev;
     contextText = ev.contextText;
-    extra = { type: "health", source: "Sangam evidence", topics: ev.topic_labels, items: ev.sources, live_errors: ev.live?.errors ?? [], live_ms: ev.live?.took_ms ?? 0 };
+    extra = { type: "health", source: "Vaidya Pulse evidence", topics: ev.topic_labels, items: ev.sources, live_errors: ev.live?.errors ?? [], live_ms: ev.live?.took_ms ?? 0, ranking: ev.ranking ?? null };
   }
 
   // ---- Step 7: build the conversation history (the "memory") ----------------
@@ -209,6 +208,8 @@ export default async (req, context) => {
     flags,
     ...toStructured({ reply, behavior, evidence, flags }), // summary, clinical, ayurvedic, community, safety, redFlags, sources, crisis
     context: extra,           // every source given to the model, with trust scores (null if not a health question)
+    ranking: extra?.ranking ?? null, // { candidates, eligible, kept, per_source: {pubmed: {fetched, eligible, kept}, ...}, weights }
+    live_errors: extra?.live_errors ?? [],
     provider: provider(),     // groq | oss | anthropic | openai | mock
     model: modelName(),
     prompt_version: PROMPT_VERSION,

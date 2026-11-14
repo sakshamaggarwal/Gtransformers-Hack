@@ -34,10 +34,10 @@ export function modelName() {
   return "mock";
 }
 
-export const BOT_NAME = "Sangam Health";
-export const PROMPT_VERSION = "health-v1"; // bump whenever you edit SYSTEM_PROMPT
+export const BOT_NAME = "Vaidya Pulse";
+export const PROMPT_VERSION = "health-v2-ranked"; // bump whenever you edit SYSTEM_PROMPT
 
-export const SYSTEM_PROMPT = `You are Sangam Health, a health information assistant. You combine three kinds of
+export const SYSTEM_PROMPT = `You are Vaidya Pulse, a health information assistant. You combine three kinds of
 evidence for everyday health questions: clinical research, real community experience, and Ayurveda.
 You give general information, never a diagnosis or a prescription.
 
@@ -45,16 +45,19 @@ WHAT YOU DO (behavior "ANSWER"):
 - Questions about improving or understanding health: blood health (RBC, hemoglobin, iron, B12),
   immunity, digestion, sleep and stress, blood sugar, cholesterol and heart, joints, vitamin D and bones,
   supplements, herbs and Ayurvedic remedies, and follow-ups to these.
-- Use ONLY the HEALTH CONTEXT and LIVE RESEARCH data you are given. Cite every claim with its id in
-  square brackets, like [E1], [P2], [C3], [Q1], [A2], [F1], [T1]. Never invent sources, studies or numbers.
+- Use ONLY the HEALTH CONTEXT and the TOP RANKED EVIDENCE you are given. The ranked list was fetched
+  live and sorted by relevance, trust, recency, engagement and author credibility: lean on higher-ranked
+  items first. Cite every claim with its id in square brackets, like [P1], [T1], [F1], [Q1], [R2], [A2],
+  [E1]. Never invent sources, studies or numbers.
 - Always include the Ayurvedic perspective from the [A#] entries, with its evidence level and cautions.
-- Treat community comments [C#]/[Q#]/[R#] as experiences, not proof. Prefer higher trust scores.
+- Treat community items [Q#]/[R#]/[C#] as experiences, not proof. Prefer higher trust scores and
+  clinician authors. Never repeat a community claim that contradicts the research.
 - If the data does not cover the question, say so and suggest asking a doctor.
 
 REPLY LAYOUT (plain text, these headings, each on its own line, skip a section only if it has no data):
 Summary: one or two sentences.
 What research says: evidence-based points [E#][P#][T#].
-What the community reports: 1-3 points with trust scores [C#][Q#].
+What the community reports: 1-3 points with trust scores [Q#][R#].
 Ayurvedic perspective: 1-3 remedies with evidence level and caution [A#].
 Safety: cautions, interactions, FDA reports [F#], and when to see a doctor.
 Keep the whole reply under 230 words.
@@ -140,7 +143,11 @@ async function fetchWithRetry(url, options, tries = 2) {
 // structured evidence with simple rules, so the full pipeline can be demoed
 // and tested offline. A real model writes far better prose.
 // =============================================================================
-const firstSentence = (s) => (String(s).match(/^.*?[.!?](\s|$)/)?.[0] ?? String(s)).trim();
+// First sentence with some substance ("Yes." / "Physician here." are skipped).
+const firstSentence = (s) => {
+  const parts = String(s).match(/[^.!?]+[.!?]+(\s|$)/g) ?? [String(s)];
+  return (parts.find((p) => p.trim().length > 35) ?? parts[0]).trim();
+};
 
 function mockLLM(history, ev) {
   const out = (behavior, reply) => JSON.stringify({ behavior, reply });
@@ -159,10 +166,10 @@ function mockLLM(history, ev) {
   const research = [
     ...ev.clinical.slice(0, 2).map((e) => `${firstSentence(e.fact)} [${e.id}]`),
     ...live.filter((x) => x.kind === "pubmed").slice(0, 2).map((p) => `Study: "${p.title}" [${p.id}]`),
-    ...live.filter((x) => x.kind === "trial").slice(0, 1).map((t) => `Trial: ${t.title} (${t.status.toLowerCase()}) [${t.id}]`),
+    ...live.filter((x) => x.kind === "trial").slice(0, 1).map((t) => `Trial: ${t.title} (${String(t.status).toLowerCase().replace(/_/g, " ")}) [${t.id}]`),
   ];
   if (research.length) L.push("What research says: " + research.join(" "));
-  const comm = [...ev.community, ...live.filter((x) => x.kind === "community")].sort((a, b) => b.trust - a.trust).slice(0, 2);
+  const comm = [...ev.community, ...live.filter((x) => x.kind === "community")].sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99) || b.trust - a.trust).slice(0, 2);
   if (comm.length) L.push("What the community reports: " + comm.map((c) => `${firstSentence(c.tips?.[0] ?? c.text)} (trust ${c.trust}) [${c.id}]`).join(" "));
   if (ev.ayurveda.length) L.push("Ayurvedic perspective: " + ev.ayurveda.slice(0, 2).map((a) => `${a.name}: ${firstSentence(a.how_used)} Evidence: ${a.evidence}. [${a.id}]`).join(" "));
   const safety = [...ev.ayurveda.slice(0, 2).map((a) => `${firstSentence(a.cautions)} [${a.id}]`), ...live.filter((x) => x.kind === "fda").slice(0, 1).map((f) => `${f.title} [${f.id}].`)];

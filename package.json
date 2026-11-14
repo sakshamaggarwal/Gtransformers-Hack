@@ -1,16 +1,18 @@
 {
-  "name": "sangam-health",
+  "name": "vaidya-pulse",
   "private": true,
   "type": "module",
   "engines": {
     "node": ">=18"
   },
   "scripts": {
+    "start": "node scripts/serve.mjs",
     "dev": "netlify dev",
-    "build:kb": "python3 pipeline/build_kb.py",
     "test": "node scripts/test-backend.mjs",
     "test:health": "node scripts/run-tests.mjs --tests public/data/health_tests.csv",
     "test:safety": "node scripts/run-tests.mjs --tests public/data/safety_tests.csv",
+    "sync:web": "node scripts/sync-web.mjs",
+    "build:kb": "python3 pipeline/build_kb.py",
     "deploy": "netlify deploy --prod"
   },
   "dependencies": {

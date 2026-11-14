@@ -18,7 +18,7 @@ const PROMO = /(bit\.ly|promo code|discount code|use code|affiliate|ref=)/i;
 const EXTREME = /\b(\d{3,}\s*mg (of )?iron|\d{2,3},?000\s*iu|megadose|stop (taking )?(your )?(insulin|metformin|statin|medication|meds))\b/gi;
 const NEGATED = /(never|don'?t|do not|not|without)\s+(\w+\s+){0,2}$/i;
 
-const authorIsClinician = (author) =>
+export const authorIsClinician = (author) =>
   (author.match(/[A-Z][a-z]+|[A-Z]+(?![a-z])|[a-z]+/g) ?? []).some((p) => CLINICIAN_TOKENS.has(p.toLowerCase()));
 
 function risky(text) {

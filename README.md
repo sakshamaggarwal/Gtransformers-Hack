@@ -1,14 +1,12 @@
-# 🌿 Sangam Health: Community-Generated Health Intelligence
+# 🌿 Vaidya Pulse: Community-Generated Health Intelligence
 
-> *Sangam* (संगम) means "confluence": the place where rivers meet.
-
-Ask a health question, for example **"How can I increase my RBC count?"**, and get **one cited answer** that brings together four streams of evidence:
+Ask a health question, for example **"How can I increase my RBC count?"**. Vaidya Pulse fetches **six sources live**, **ranks every result** on relevance, trust, recency, engagement and author credibility, keeps the **top 10**, and has Llama 3.1 8B write **one cited answer** from them:
 
 | Layer | Sources | What it adds |
 |---|---|---|
 | 🩺 **Clinical research** | PubMed (live), ClinicalTrials.gov (live), curated NIH / AHA facts | What the evidence actually supports |
-| 🛡️ **Safety** | OpenFDA adverse-event reports + recalls (live), red-flag symptom checks | What could go wrong |
-| 👥 **Community** | Health Stack Exchange (live), Reddit (batch + optional live), WaPo comments (parked) | Real experience, **trust-scored** so scams and risky advice are filtered out |
+| 🛡️ **Safety** | OpenFDA supplement + medicine adverse events, recalls, drug labels (live), red-flag symptom checks | What could go wrong |
+| 👥 **Community** | Health Stack Exchange (live), Reddit posts + top comments (live, keyless public JSON) | Real experience, **trust-scored** so scams and risky advice are filtered out |
 | 🌿 **Ayurveda** | Curated herb knowledge base (22 entries) + importer for open herb datasets | Traditional remedies, each with **evidence level and cautions** |
 
 The answer model is **Llama 3.1 8B (open source) on Groq**, which is free and fast. You can switch to any OpenAI-compatible open model (Ollama, Together, Hugging Face) or to Claude with one environment variable. With no key at all, a **mock mode** still produces cited answers, so the demo never depends on Wi-Fi or credits.
@@ -16,6 +14,33 @@ The answer model is **Llama 3.1 8B (open source) on Groq**, which is free and fa
 *General information only, not medical advice.*
 
 ---
+
+## Live fetching and ranking (what happens on every question)
+
+1. **Plan** (`netlify/lib/sources/index.mjs`): keywords from the question, plus the detected topic's condition, the best-matching Ayurvedic herb and the relevant medicine (e.g. ferrous sulfate for low RBC).
+2. **Fetch in parallel, keyless** (each with a timeout; a failing source is skipped, never fatal):
+
+| Source | Endpoint | What we take |
+|---|---|---|
+| PubMed | E-utilities `esearch` + `efetch` | up to 8 papers with **abstracts**, RCTs / reviews / meta-analyses first, retracted papers dropped |
+| ClinicalTrials.gov | API v2 `/studies` | up to 6 trials: status, phase, enrollment, results, summary |
+| OpenFDA | `food/event`, `food/enforcement`, `drug/event`, `drug/label` | herb adverse events + recalls, medicine adverse events + label warnings |
+| Health Stack Exchange | `/search/advanced` + `/answers` | best (accepted / top-voted) answer for up to 6 questions |
+| Reddit | public `.json` search over r/health, r/Ayurveda, r/nutrition, r/Supplements, r/medicine, r/AskDocs (+ topic subs) | up to 10 posts + top 2 comments of the 3 best threads (OAuth if `REDDIT_CLIENT_ID/SECRET` set) |
+| Ayurvedic herb KB | local `knowledge/ayurveda.json` | best-matching curated entries with evidence level and cautions |
+
+3. **Rank** (`netlify/lib/rank.mjs`). Every candidate (typically 30 to 50) gets five explainable 0..1 scores:
+
+| Score | Weight | How |
+|---|---|---|
+| Relevance | 38% | IDF-weighted query terms in title (full) / text (0.7), topic synonyms, the API's own order |
+| Trust | 25% | source tier (PubMed 1.0 > trials 0.85 > FDA 0.8 > Ayurveda KB 0.65 > Stack Exchange 0.6 > Reddit 0.4) × quality inside the source (meta-analysis > RCT > review; completed with results > recruiting; content check for scams, promo, risky dosing) |
+| Credibility | 15% | MD / PhD / RN / BAMS / "Physician" flair, Stack Exchange reputation, accepted answer |
+| Recency | 12% | exponential decay; half-life 6 y papers, 5 y trials, 4 y FDA / Q&A, 2 y Reddit |
+| Engagement | 10% | upvotes, comments, awards, upvote ratio, answer score, views, trial enrollment |
+
+   Items with relevance below 0.2, or rejected by the scam / promotion / "stop your meds" filter, are dropped. The top 10 are picked with **source diversity**: the best item of each source goes in first, then by score with at most 3 per source (2 for FDA and the KB).
+4. **Answer**: the ranked top 10 (plus curated NIH clinical reference facts) go to **Llama 3.1 8B on Groq**, which must cite every claim (`[P1] [T1] [F1] [Q1] [R1] [A1] [E1]`). The UI shows each source card with its rank, "why ranked" and the full score breakdown.
 
 ## Architecture
 
@@ -68,15 +93,21 @@ Every community item gets an **explainable 0–100 score**, starting from 50 (`p
 
 ## Quick start (about 5 minutes)
 
+Only **Node 18+** and a free **Groq key** are needed. Every data source is keyless.
+
 ```bash
 git clone https://github.com/sakshamaggarwal/Gtransformers-Hack.git
 cd Gtransformers-Hack
-npm install
-cp .env.example .env          # add GROQ_API_KEY (free: https://console.groq.com/keys), or leave empty for mock mode
-npm run dev                   # http://localhost:8888
+cp .env.example .env          # paste GROQ_API_KEY (free: https://console.groq.com/keys)
+npm start                     # plain Node, no install needed -> http://localhost:8888
 ```
 
-* **Test without any network or key:** `npm test` runs 26 backend checks against recorded-shape API fixtures.
+Open http://localhost:8888, ask a question, and the page connects to the local backend automatically (pill shows **Live backend**).
+Check the raw ranked evidence without the model: `curl "http://localhost:8888/api/evidence?q=how+can+I+increase+my+RBC+count"`.
+
+* `npm run dev` (Netlify CLI, needs `npm install`) also works and adds Netlify Blobs session storage.
+* **Test without any network or key:** `npm test` runs 37 backend checks (connectors, ranking, diversity, chat contract, safety) against recorded-shape API fixtures.
+* Edited `web/index.html`? Run `npm run sync:web` to copy it to `public/index.html` and the artifact version `web/app.html`.
 * **Rebuild the knowledge base** after adding data: `npm run build:kb` (Python 3.10+, `pip install -r pipeline/requirements.txt`).
 
 ### Model options (set in `.env`)
@@ -97,7 +128,7 @@ npx netlify env:import .env      # pushes GROQ_API_KEY etc.
 npm run deploy
 ```
 
-On Netlify, set **`STACKEXCHANGE_KEY`** (free, see [stackapps.com](https://stackapps.com/apps/oauth/register)), because the key-less quota is only 300 requests a day per IP, and serverless IPs are shared.
+On Netlify, set **`STACKEXCHANGE_KEY`** (free, see [stackapps.com](https://stackapps.com/apps/oauth/register)), because the key-less quota is only 300 requests a day per IP, and serverless IPs are shared. If Reddit returns 403 from Netlify (it sometimes blocks data-centre IPs without OAuth), create a free "script" app at https://www.reddit.com/prefs/apps and set `REDDIT_CLIENT_ID` / `REDDIT_CLIENT_SECRET`. On your laptop the keyless path works.
 
 ## API
 
@@ -118,7 +149,7 @@ On Netlify, set **`STACKEXCHANGE_KEY`** (free, see [stackapps.com](https://stack
 
 The same response also carries a **structured answer** for rich front ends such as Vaidya Pulse:
 `summary`, `clinical[{text,cites}]`, `ayurvedic[{herb,sanskrit,use,evidence,caution,cites}]`, `community[{text,who,cites}]`, `safety[{text,cites}]`, `redFlags[]`, `crisis`, and
-`sources[{id,src,title,snippet,meta,url,trust}]`, where `src` is one of `pubmed | ctgov | openfda | ayur | hse | reddit | nih | wapo`.
+`sources[{id,src,title,snippet,meta,url,trust,rank,score,why}]`, where `src` is one of `pubmed | ctgov | openfda | ayur | hse | reddit | nih | community`. Ranked items come first (`rank` 1..10, `score` = `{total, relevance, trust, recency, engagement, credibility}`), then unranked reference facts. `ranking` = `{candidates, eligible, kept, per_source:{pubmed:{fetched,eligible,kept},…}, weights}`. `ayurvedic[].evidence` is always one of `moderate | limited | traditional | caution` (the KB's full wording is in `evidence_label`).
 
 ### `GET /api/evidence?q=…` (raw evidence, no model call, CORS open)
 Returns the topics, clinical facts, community items with trust scores, Ayurvedic entries, live PubMed / trials / FDA / Stack Exchange results and the query plan. Use it for a custom front end or to show judges the data behind an answer.

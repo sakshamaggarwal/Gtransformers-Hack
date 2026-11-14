@@ -4,9 +4,9 @@
 
 const cache = new Map(); // url -> { at, data }
 const TTL_MS = 30 * 60 * 1000;
-export const USER_AGENT = "community-health-intelligence/0.2 (hackathon prototype)";
+export const USER_AGENT = "web:vaidya-pulse:0.3 (health research hackathon prototype)";
 
-export async function getJSON(url, { timeoutMs = 4000, headers = {} } = {}) {
+export async function getJSON(url, { timeoutMs = 5000, headers = {} } = {}) {
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
   const res = await fetch(url, {
@@ -20,6 +20,20 @@ export async function getJSON(url, { timeoutMs = 4000, headers = {} } = {}) {
   if (cache.size > 500) cache.delete(cache.keys().next().value);
   return data;
 }
+
+// Same as getJSON, for XML / text APIs (PubMed efetch).
+export async function getText(url, { timeoutMs = 5000, headers = {} } = {}) {
+  const hit = cache.get(url);
+  if (hit && Date.now() - hit.at < TTL_MS) return hit.data;
+  const res = await fetch(url, { headers: { "user-agent": USER_AGENT, ...headers }, signal: AbortSignal.timeout(timeoutMs) });
+  if (!res.ok) throw new Error(`${new URL(url).host} ${res.status}`);
+  const data = await res.text();
+  cache.set(url, { at: Date.now(), data });
+  if (cache.size > 500) cache.delete(cache.keys().next().value);
+  return data;
+}
+
+export const clearCache = () => cache.clear();
 
 export const qs = (params) =>
   Object.entries(params).filter(([, v]) => v != null && v !== "").map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join("&");
