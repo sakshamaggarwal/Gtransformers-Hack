@@ -1,0 +1,297 @@
+{
+  "source": "wapo",
+  "url": "",
+  "synthetic": true,
+  "title": "DEMO DATA (synthetic): health comments in Washington Post parser format",
+  "note": "Hand-written sample comments in the exact shape wapo_parser.py outputs, so the demo runs without live scraping. Replace with real exports before relying on results.",
+  "threads": [
+    {
+      "id": "e8e25d94-0ed9-0475-9531-985d5d9dc9f8",
+      "author": "HemeDocRN",
+      "timestamp": "2026-10-02T14:42:00.000Z",
+      "text": "Nurse here, 20 years on a hematology floor. Before you start iron for a low RBC count, get a CBC with ferritin, B12 and folate checked. Low RBC is not always iron deficiency, and taking iron when you don't need it can hurt your liver. If ferritin is low, take iron with orange juice or other vitamin C, and keep tea and coffee an hour away from it.",
+      "upvotes": 142,
+      "downvotes": 3,
+      "reactions": 21,
+      "replies": [
+        {
+          "id": "6513270e-269e-0d37-f2a7-4de452e6b438",
+          "author": "PuneVegMom",
+          "timestamp": "2026-10-03T14:51:00.000Z",
+          "text": "This matched my experience. My hemoglobin was 9.8 and it turned out to be B12, not iron, because I'm vegetarian. B12 injections fixed it in three months. Ask your doctor to check B12 too.",
+          "upvotes": 38,
+          "downvotes": 0,
+          "reactions": 6
+        },
+        {
+          "id": "892f902b-d23f-0824-128b-2f330c5c7fd0",
+          "author": "SkepticalSam",
+          "timestamp": "2026-10-03T14:16:00.000Z",
+          "text": "Iron pills wrecked my stomach. Taking them every other day with food, as my GP suggested, was much easier to tolerate.",
+          "upvotes": 25,
+          "downvotes": 1,
+          "reactions": 3
+        }
+      ]
+    },
+    {
+      "id": "8d116ece-1738-f7d9-3d9c-172411e20b8f",
+      "author": "Ayur_Kitchen",
+      "timestamp": "2026-10-02T14:37:00.000Z",
+      "text": "My grandmother's routine for weak blood: soak black raisins and two dates overnight, eat them in the morning, and cook dal and greens in an iron kadai. Amla in the afternoon. My ferritin went from 8 to 31 in six months alongside the iron tablets my doctor gave me, so I can't say which did it, but the food habits were easy to keep.",
+      "upvotes": 96,
+      "downvotes": 2,
+      "reactions": 14,
+      "replies": [
+        {
+          "id": "6f03675a-1600-a35a-0999-50d836f675cc",
+          "author": "FoodSciGrad",
+          "timestamp": "2026-10-03T14:36:00.000Z",
+          "text": "There's real science behind the iron pan. Studies show cooking acidic foods like tomato dal in cast iron raises their iron content. And amla is loaded with vitamin C which helps plant iron absorb.",
+          "upvotes": 41,
+          "downvotes": 0,
+          "reactions": 5
+        }
+      ]
+    },
+    {
+      "id": "1fb17c23-90c1-92cf-d3ac-94af0f21ddb6",
+      "author": "GreenSmoothieGuru",
+      "timestamp": "2026-10-02T14:24:00.000Z",
+      "text": "Beetroot juice is a MIRACLE for blood. My hemoglobin went up 4 points in 7 days, guaranteed. DM me for my detox your blood protocol, limited offer this week.",
+      "upvotes": 2,
+      "downvotes": 37,
+      "reactions": 1,
+      "replies": []
+    },
+    {
+      "id": "f29d0da9-953f-48f1-a09f-76b5a170b338",
+      "author": "RunnerBeth",
+      "timestamp": "2026-10-02T14:13:00.000Z",
+      "text": "Endurance runner with low ferritin here. Switching my morning coffee to after lunch and adding lentils plus bell peppers at dinner helped a lot. My sports doctor also checked for heavy periods as a cause, which is common and often missed.",
+      "upvotes": 54,
+      "downvotes": 1,
+      "reactions": 7,
+      "replies": []
+    },
+    {
+      "id": "0cb1e29c-658c-da14-95e6-0af593bd04cf",
+      "author": "BAMS_Vaidya_Kerala",
+      "timestamp": "2026-10-02T14:24:00.000Z",
+      "text": "As an Ayurvedic physician (BAMS) I see many patients asking for Punarnava Mandura for anemia. It does contain iron, so please don't combine it with iron tablets on your own, and buy only GMP-certified brands that publish heavy-metal tests. We always ask patients to get blood work done first and repeat it after 6 to 8 weeks.",
+      "upvotes": 77,
+      "downvotes": 4,
+      "reactions": 11,
+      "replies": []
+    },
+    {
+      "id": "2217bead-dbc4-96cb-8e81-973e0becd7b0",
+      "author": "IronMan1957",
+      "timestamp": "2026-10-02T14:28:00.000Z",
+      "text": "Just take 500 mg iron daily and you'll be fine in a week. Doctors are too cautious.",
+      "upvotes": 3,
+      "downvotes": 29,
+      "reactions": 0,
+      "replies": []
+    },
+    {
+      "id": "1e27a1c0-8a6a-63ec-24ed-e6a46b4cb242",
+      "author": "QuietReader22",
+      "timestamp": "2026-10-02T14:46:00.000Z",
+      "text": "Moringa leaf powder in my paratha dough every day. Tastes earthy but my last report showed better hemoglobin. Also check your thyroid, mine was part of why I felt tired.",
+      "upvotes": 19,
+      "downvotes": 2,
+      "reactions": 2,
+      "replies": []
+    },
+    {
+      "id": "b64ce422-8c38-fb29-18f1-35d25f557203",
+      "author": "ID_Physician_MD",
+      "timestamp": "2026-10-02T14:14:00.000Z",
+      "text": "Infectious disease doctor. The boring stuff works best for immunity: get your flu and COVID shots, sleep 7 to 8 hours, move daily, and eat plenty of plants. Vitamin D or zinc help only if you're actually low. No herb replaces a vaccine.",
+      "upvotes": 188,
+      "downvotes": 9,
+      "reactions": 30,
+      "replies": [
+        {
+          "id": "ae97ba94-d0ed-a82f-8f6d-05584ef8aa38",
+          "author": "DelhiDad",
+          "timestamp": "2026-10-03T14:21:00.000Z",
+          "text": "We do tulsi ginger kadha at home every winter. I don't think it prevents colds, but it really soothes a sore throat. Agree that it's not a vaccine substitute.",
+          "upvotes": 33,
+          "downvotes": 1,
+          "reactions": 4
+        },
+        {
+          "id": "a38fd547-923a-7369-94e3-bf911a61dbe2",
+          "author": "LiverWatch",
+          "timestamp": "2026-10-03T14:22:00.000Z",
+          "text": "Be careful with Giloy. My uncle took it daily during the pandemic and developed liver problems. His hepatologist said they saw several cases like it.",
+          "upvotes": 46,
+          "downvotes": 2,
+          "reactions": 9
+        }
+      ]
+    },
+    {
+      "id": "34b9b5df-9e77-69b1-0f42-05b4907a70c3",
+      "author": "ChyawanFan",
+      "timestamp": "2026-10-02T14:41:00.000Z",
+      "text": "A spoon of Chyawanprash with warm milk every morning in winter, my whole family has done it for years. Just know it's mostly sugar and amla, so diabetics watch out.",
+      "upvotes": 28,
+      "downvotes": 3,
+      "reactions": 2,
+      "replies": []
+    },
+    {
+      "id": "7403e430-ec66-a787-95e7-61d17731af10",
+      "author": "GutHealthRD",
+      "timestamp": "2026-10-02T14:33:00.000Z",
+      "text": "Registered dietitian. For bloating, try smaller meals, eat slowly and keep a food diary. A low-FODMAP trial with a dietitian helps many people with IBS. Fennel or cumin tea after meals is a nice, harmless habit too. Blood in stool or weight loss means see a doctor right away.",
+      "upvotes": 112,
+      "downvotes": 2,
+      "reactions": 16,
+      "replies": [
+        {
+          "id": "c6f87718-6d76-b07e-881e-d162ae2eb154",
+          "author": "Mumbai_Mira",
+          "timestamp": "2026-10-03T14:30:00.000Z",
+          "text": "CCF tea (cumin, coriander, fennel) after dinner fixed my evening bloating. Took about two weeks.",
+          "upvotes": 22,
+          "downvotes": 0,
+          "reactions": 3
+        }
+      ]
+    },
+    {
+      "id": "2e05319a-cb5c-7427-3f98-e2774cbd87ad",
+      "author": "TriphalaTom",
+      "timestamp": "2026-10-02T14:54:00.000Z",
+      "text": "Half a teaspoon of Triphala in warm water at night keeps me regular. It can make things too loose if you take more, so start small.",
+      "upvotes": 31,
+      "downvotes": 2,
+      "reactions": 4,
+      "replies": []
+    },
+    {
+      "id": "930d6eaf-14f4-733f-3e7d-1bfbc7a2ea20",
+      "author": "ColonCleanseNow",
+      "timestamp": "2026-10-02T14:29:00.000Z",
+      "text": "Doctors don't want you to know: our herbal colon cleanse cures IBS in 3 days. Use code HEAL50 at www.cleanse-store.example",
+      "upvotes": 0,
+      "downvotes": 44,
+      "reactions": 0,
+      "replies": []
+    },
+    {
+      "id": "faecbd38-9be4-bcfc-49b6-4a0872e6cc3a",
+      "author": "SleepPsychPhD",
+      "timestamp": "2026-10-02T14:14:00.000Z",
+      "text": "Sleep psychologist. For chronic insomnia, CBT-I beats pills in head-to-head studies. Keep a fixed wake-up time even on weekends, get out of bed if you can't sleep after 20 minutes, and cut caffeine after noon.",
+      "upvotes": 97,
+      "downvotes": 1,
+      "reactions": 12,
+      "replies": [
+        {
+          "id": "57ee05cd-e009-02c7-7ebf-f20686734721",
+          "author": "AshwaUser",
+          "timestamp": "2026-10-03T14:56:00.000Z",
+          "text": "Ashwagandha at night helped my sleep within a few weeks, but I had to stop because it messed with my thyroid medication levels. Talk to your doctor if you're on thyroid meds.",
+          "upvotes": 36,
+          "downvotes": 0,
+          "reactions": 5
+        }
+      ]
+    },
+    {
+      "id": "2a3af4d4-6b0a-18e8-830e-07bc1e398f10",
+      "author": "OilMassageFan",
+      "timestamp": "2026-10-02T14:58:00.000Z",
+      "text": "Warm sesame oil on the feet before bed, an early light dinner, and no phone in the bedroom. Old Ayurvedic dinacharya advice, and it works better for me than melatonin did.",
+      "upvotes": 24,
+      "downvotes": 1,
+      "reactions": 3,
+      "replies": []
+    },
+    {
+      "id": "13deef86-ab10-31d0-f646-e1f40a097c97",
+      "author": "EndoNP_Ohio",
+      "timestamp": "2026-10-02T14:58:00.000Z",
+      "text": "Endocrinology nurse practitioner. Walking 10 to 15 minutes after meals lowers post-meal glucose a lot. Fenugreek seeds may help a little, but please never stop metformin or insulin for herbs. Gymnema plus insulin can drop your sugar dangerously low.",
+      "upvotes": 83,
+      "downvotes": 2,
+      "reactions": 9,
+      "replies": [
+        {
+          "id": "7d2caf82-eeea-cbe2-26e8-75555790f82e",
+          "author": "PrediabeticPaul",
+          "timestamp": "2026-10-03T14:36:00.000Z",
+          "text": "Soaked methi seeds every morning plus a walk after dinner, and my A1C went from 6.1 to 5.7 in 5 months. Lost 6 kg too, which probably mattered most.",
+          "upvotes": 29,
+          "downvotes": 0,
+          "reactions": 4
+        }
+      ]
+    },
+    {
+      "id": "e01f5057-ca02-135e-92b1-d3f28ede0d7a",
+      "author": "SugarFreeForever",
+      "timestamp": "2026-10-02T14:30:00.000Z",
+      "text": "Stop your insulin and take karela juice instead, it cured my diabetes for good. Big pharma hides this.",
+      "upvotes": 1,
+      "downvotes": 52,
+      "reactions": 0,
+      "replies": []
+    },
+    {
+      "id": "119a72d1-74c9-df6a-cc01-1cdd9474031b",
+      "author": "CardioDoc_Retired",
+      "timestamp": "2026-10-02T14:15:00.000Z",
+      "text": "Retired cardiologist. Oats, beans and psyllium lower LDL modestly, and exercise helps everything. Guggul was tested in a proper trial and did not lower LDL. If your risk is high, a statin is still the best-proven option.",
+      "upvotes": 71,
+      "downvotes": 3,
+      "reactions": 8,
+      "replies": [
+        {
+          "id": "98289fcd-59a5-4a7b-b1fe-e08f57124242",
+          "author": "ArjunaTea",
+          "timestamp": "2026-10-03T14:41:00.000Z",
+          "text": "My Ayurvedic doctor gave me Arjuna bark boiled in milk, but she made me tell my cardiologist because it can add to BP meds. Good advice.",
+          "upvotes": 15,
+          "downvotes": 0,
+          "reactions": 2
+        }
+      ]
+    },
+    {
+      "id": "b394fb36-bb2d-420f-0f88-080b10a3d6b2",
+      "author": "PT_Knees",
+      "timestamp": "2026-10-02T14:29:00.000Z",
+      "text": "Physical therapist. For knee osteoarthritis, strengthening your thighs and low-impact exercise like swimming or cycling help more than any supplement. Turmeric with black pepper in golden milk is fine as food, but high-dose curcumin capsules can interact with blood thinners.",
+      "upvotes": 64,
+      "downvotes": 1,
+      "reactions": 7,
+      "replies": [
+        {
+          "id": "b2715945-795e-8229-451a-bd81f1d69ed6",
+          "author": "BoswelliaBetty",
+          "timestamp": "2026-10-03T14:52:00.000Z",
+          "text": "Shallaki (boswellia) capsules took the edge off my morning stiffness after about a month. Small effect, but noticeable.",
+          "upvotes": 12,
+          "downvotes": 1,
+          "reactions": 1
+        }
+      ]
+    },
+    {
+      "id": "ae658f33-fe3b-890b-93f4-48b3a5aa3c81",
+      "author": "BoneHealthMD",
+      "timestamp": "2026-10-02T14:38:00.000Z",
+      "text": "Get a 25-OH vitamin D blood test before megadosing. Most adults need 600 to 800 IU, and the upper limit is 4,000 IU unless your doctor prescribes more. Morning sun helps, but darker skin makes less vitamin D. Ragi and sesame are great calcium sources.",
+      "upvotes": 58,
+      "downvotes": 1,
+      "reactions": 6,
+      "replies": []
+    }
+  ]
+}

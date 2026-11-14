@@ -1,0 +1,37 @@
+{
+  "source": "wapo",
+  "url": "",
+  "title": "Washington Post article comments: dietary supplements (sample export)",
+  "synthetic": false,
+  "threads": [
+    {
+      "id": "38fa4ea5-acee-4dbf-b258-eec997571f63",
+      "author": "GLpreventveMD",
+      "timestamp": "2026-09-13T16:31:20.671Z",
+      "text": "I’m a retired preventive, lipidologist internist now plant based for 15 years. Unfortunately, the issue of studies of supplements on health and disease is even more complicated. 1. Supplements were set aside as not be under FDA auspices by a heavily lobbied federal bill in the mid 1990s. Thus the now unregulated &50 billion yearly expenditure was n supplements in the US yearly. 2. Consequently. the purity not to mention whether the actual molecular substance is in fact in the product at all is up for grabs except by bone fide private lab assurance of quality. 3. Supplements of nutrients, antioxidants, and known essential elements of a healthy diet have been shown to be detrimental when imbibed in arbitrary doses. Beta carotene and vitamin E were both shown to unequivocally increase lung cancer risk in smokers whereas those with naturally higher levels from diet alone did much better. 4. The matrix of the whole diet of millions of nutrients interacting in impossibly complex ways is much different from unnatural isolated focus on single or few substances that we did not evolve to imbibe. 5. Prevagen is an example of a much advertised product claiming improved cognitive function. The manufacturer’s own study showed no benefit, yet because of the lobbying in the 1990s it’s useless wasteful purchase persists.",
+      "upvotes": 9,
+      "downvotes": 0,
+      "reactions": 3,
+      "replies": [
+        {
+          "id": "2521b245-9f09-47ab-babb-8ac1913f2b45",
+          "author": "Down Bad Doggie",
+          "timestamp": "2026-09-15T07:05:05.229Z",
+          "text": "1. Thanks for pointing out lack of OTC supplement regulation. USP is a reputable 3rd-party tester of supplements (may be others I don’t know of.) When you talk to doc about supplements you use, be sure to specify whether 3rd-party tested or not.",
+          "upvotes": 0,
+          "downvotes": 0,
+          "reactions": 0
+        },
+        {
+          "id": "f3ff2a1d-e633-4b74-89c2-ddbd2995e0ba",
+          "author": "Mirru123",
+          "timestamp": "2026-09-17T12:41:29.940Z",
+          "text": "If the amount seems extreme and not easily obtainable from the diet, ignore those recommendations. Eventually, they will be proven wrong. The medical community went from recommending 250 IU of daily vitamin D to as much as 4,000-5,000 IU. Do not make the US population dumber than it already is.",
+          "upvotes": 0,
+          "downvotes": 0,
+          "reactions": 0
+        }
+      ]
+    }
+  ]
+}

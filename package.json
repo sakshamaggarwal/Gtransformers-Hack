@@ -1,0 +1,22 @@
+{
+  "name": "sangam-health",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "netlify dev",
+    "build:kb": "python3 pipeline/build_kb.py",
+    "test": "node scripts/test-backend.mjs",
+    "test:health": "node scripts/run-tests.mjs --tests public/data/health_tests.csv",
+    "test:safety": "node scripts/run-tests.mjs --tests public/data/safety_tests.csv",
+    "deploy": "netlify deploy --prod"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^23.0.0"
+  }
+}
