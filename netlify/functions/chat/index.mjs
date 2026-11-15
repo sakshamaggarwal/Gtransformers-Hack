@@ -33,7 +33,7 @@ import {
   validateMessage, redactPII, looksLikeInjection, showsDistress, parseModelOutput, hasRedFlag, policyBlock,
   SUPPORT_LINE, URGENT_NOTE, MAX_TURNS_PER_SESSION, HISTORY_TURNS_SENT,
 } from "../../lib/checks.mjs";
-import { callLLM, provider, modelName, env, PROMPT_VERSION } from "../../lib/llm.mjs";
+import { callLLM, mockLLM, provider, modelName, env, PROMPT_VERSION } from "../../lib/llm.mjs";
 import { buildEvidence } from "../../lib/evidence.mjs";
 import { toStructured } from "../../lib/structure.mjs";
 
@@ -66,19 +66,19 @@ export default async (req, context) => {
 
   // ---- Step 1: accept only POST with a JSON body ---------------------------
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
-  if (req.method !== "POST") return Response.json({ error: "Use POST" }, { status: 405 });
+  if (req.method !== "POST") return Response.json({ error: "Use POST" }, { status: 405, headers: CORS });
 
   let body;
   try {
     body = await req.json();
   } catch {
-    return Response.json({ error: 'Body must be JSON: {"message": "..."}' }, { status: 400 });
+    return Response.json({ error: 'Body must be JSON: {"message": "..."}' }, { status: 400, headers: CORS });
   }
 
   // ---- Step 2: validate the message ----------------------------------------
   // Rejects empty messages and messages over MAX_MESSAGE_CHARS (see checks.mjs).
   const input = validateMessage(body?.message);
-  if (!input.ok) return Response.json({ error: input.error }, { status: 400 });
+  if (!input.ok) return Response.json({ error: input.error }, { status: 400, headers: CORS });
 
   // ---- Step 3: rate limit ----------------------------------------------------
   // 429 + retry-after tells well-behaved clients (like scripts/run-tests.mjs)
@@ -86,7 +86,7 @@ export default async (req, context) => {
   if (rateLimited(context?.ip ?? "unknown")) {
     return Response.json(
       { error: "Too many messages, please slow down." },
-      { status: 429, headers: { "retry-after": "10" } }
+      { status: 429, headers: { ...CORS, "retry-after": "10" } }
     );
   }
 
@@ -95,7 +95,7 @@ export default async (req, context) => {
   // We only accept proper UUIDs, so nobody can use odd keys in the store.
   let session = null;
   if (body.session_id != null) {
-    if (!isValidId(body.session_id)) return Response.json({ error: "invalid session_id" }, { status: 400 });
+    if (!isValidId(body.session_id)) return Response.json({ error: "invalid session_id" }, { status: 400, headers: CORS });
     session = await loadSession(body.session_id);
   }
   // No id, or an id we've never seen (e.g. after a local restart): start a new chat.
@@ -104,7 +104,7 @@ export default async (req, context) => {
   // ---- Step 5: cap the conversation length (cost control) -------------------
   const userTurns = session.messages.filter((m) => m.role === "user").length;
   if (userTurns >= MAX_TURNS_PER_SESSION) {
-    return Response.json({ error: "This conversation is full. Please start a new chat." }, { status: 400 });
+    return Response.json({ error: "This conversation is full. Please start a new chat." }, { status: 400, headers: CORS });
   }
 
   // ---- Step 6: mask personal data, and raise flags ---------------------------
@@ -158,21 +158,30 @@ export default async (req, context) => {
   // ---- Step 8: call the model and check its answer ---------------------------
   // callLLM (llm.mjs) picks Claude, OpenAI or the mock model.
   // parseModelOutput (checks.mjs) makes sure we got {"behavior", "reply"}.
-  let behavior, reply, usage = { input_tokens: 0, output_tokens: 0 };
+  let behavior, reply, usage = { input_tokens: 0, output_tokens: 0 }, usedModel = modelName(), degraded = null;
   try {
     if (blocked) throw Object.assign(new Error("policy"), { blocked: true });
     const llm = await callLLM(history, evidence);
     usage = llm.usage;
+    if (llm.model) usedModel = llm.model;
     const parsed = parseModelOutput(llm.raw);
     flags.output_valid = parsed.ok;
     ({ behavior, reply } = parsed);
   } catch (err) {
     if (err.blocked) { behavior = "DECLINE"; reply = blocked; flags.policy_block = true; } else {
-    // Network error, bad key, no credits, timeout... Log the reason for the
-    // developer (visible in Netlify → Logs → Functions), show a generic message to the user.
-    console.error(JSON.stringify({ event: "llm_error", message: String(err.message).slice(0, 300) }));
-    return Response.json({ error: "The assistant is unavailable right now. Please try again." }, { status: 502 });
-  } }
+      // Network error, bad key, rate limit, timeout... Log the reason for the developer
+      // (Netlify → Logs → Functions). The user still gets a cited answer: the rule-based
+      // writer builds it from the same ranked evidence, and the UI says so.
+      console.error(JSON.stringify({ event: "llm_error", message: String(err.message).slice(0, 300) }));
+      if (env("LLM_FALLBACK") === "off") return Response.json({ error: "The assistant is unavailable right now. Please try again." }, { status: 502, headers: CORS });
+      const parsed = parseModelOutput(mockLLM(history, evidence));
+      ({ behavior, reply } = parsed);
+      reply = reply.replace(" (mock model, no AI key set)", "");
+      usedModel = "rule-based fallback";
+      degraded = /\b(401|403)\b/.test(err.message) ? "model_auth" : /\b429\b/.test(err.message) ? "model_rate_limited" : /timeout|abort/i.test(err.message) ? "model_timeout" : "model_unavailable";
+      flags.llm_fallback = true;
+    }
+  }
 
   // ---- Step 9: distress always gets support resources ------------------------
   // A safety net that doesn't depend on the model getting it right.
@@ -210,8 +219,9 @@ export default async (req, context) => {
     context: extra,           // every source given to the model, with trust scores (null if not a health question)
     ranking: extra?.ranking ?? null, // { candidates, eligible, kept, per_source: {pubmed: {fetched, eligible, kept}, ...}, weights }
     live_errors: extra?.live_errors ?? [],
-    provider: provider(),     // groq | oss | anthropic | openai | mock
-    model: modelName(),
+    provider: degraded ? "fallback" : provider(), // groq | oss | anthropic | openai | mock | fallback
+    model: usedModel,
+    degraded,                 // null, or why the AI model was skipped (model_auth | model_rate_limited | model_timeout | model_unavailable)
     prompt_version: PROMPT_VERSION,
     storage: await storageKind(), // netlify-blobs | memory
     latency_ms: Date.now() - started,
