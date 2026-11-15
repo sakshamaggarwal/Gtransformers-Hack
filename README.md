@@ -1,4 +1,17 @@
-# 🌿 Vaidya Pulse: Community-Generated Health Intelligence
+# 🌿 Vaidya Pulse + CollectiveMind
+
+This `demo` branch is the **combined** app:
+
+| Part | Where | What it does |
+|---|---|---|
+| **Vaidya Pulse** | `/` (`public/index.html` + `netlify/functions`) | Ask a health question; six live sources are ranked and Llama 3.1 8B writes one cited answer (described below). |
+| **CollectiveMind** | `/community/` (`public/community/`) | 29 topic cards built from 547 NYT and WaPo reader comments: verdicts, health-risk flags, disagreements, citations. Linked from the nav, the hero banner and each answer's community layer. |
+| **Comment knowledge generator** | `comment-knowledge-generator/` | The pipeline that builds CollectiveMind (parse, extract, cluster, write cards, verify, publish), with tests. |
+
+Deploying and switching branches: see [`DEPLOY.md`](DEPLOY.md). The CollectiveMind-only version lives on the `community-analysis` branch.
+
+---
+
 
 Ask a health question, for example **"How can I increase my RBC count?"**. Vaidya Pulse fetches **six sources live**, **ranks every result** on relevance, trust, recency, engagement and author credibility, keeps the **top 10**, and has Llama 3.1 8B write **one cited answer** from them:
 
