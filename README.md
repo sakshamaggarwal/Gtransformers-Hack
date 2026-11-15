@@ -4,8 +4,6 @@
 
 *General information only, not medical advice.*
 
-> This branch (`community-analysis`) is the **CollectiveMind-only** version. The Vaidya Pulse AI health assistant lives on `main`; the combined app (Vaidya Pulse + CollectiveMind) lives on `demo`.
-
 ## What's live
 
 `community-analysis/index.html`: a self-contained static page built from reader comments on two supplement articles:
@@ -45,7 +43,7 @@ saved comment page ─▶ 1 parse ─▶ 2 extract ─▶ 3 cluster ─▶ 4 wri
 |---|---|
 | `community-analysis/` | The deployed site: `index.html` (data inlined, no external requests), `knowledge.db` (SQLite: articles, cards, items, refs, disagreements, full-text indexes), `netlify.toml` |
 | `comment-knowledge-generator/` | The pipeline that builds the page and database: `pipeline/` steps, `tests/`, `docs/HOW_IT_WORKS.md`, `docs/TESTING.md`, `Makefile`. See its README. |
-| everything else | Shared code inherited from `main` (Vaidya Pulse). Not used by the CollectiveMind site. |
+| everything else | Shared code inherited from `main`. Not used by the CollectiveMind site. |
 
 ## Deploy on Netlify
 
@@ -57,7 +55,7 @@ saved comment page ─▶ 1 parse ─▶ 2 extract ─▶ 3 cluster ─▶ 4 wri
 | Publish directory | `community-analysis` |
 | Environment variables | none |
 
-Every push to `community-analysis` redeploys the site. The base directory matters: without it Netlify uses the root `netlify.toml`, which publishes the Vaidya Pulse app instead.
+Every push to `community-analysis` redeploys the site. The base directory matters: without it Netlify uses the root `netlify.toml`, which publishes a different app instead.
 
 ## Run the pipeline locally
 
