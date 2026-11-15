@@ -1,0 +1,11 @@
+# Static deploy of the community comment analysis page (no build step).
+# In Netlify, set Base directory = community-analysis
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/knowledge.db"
+  [headers.values]
+    Content-Type = "application/vnd.sqlite3"
+    Content-Disposition = "attachment; filename=knowledge.db"
