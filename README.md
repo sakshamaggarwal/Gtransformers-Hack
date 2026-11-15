@@ -6,7 +6,7 @@
 
 ## What's live
 
-`public/community/index.html` (served at `/community/`): a self-contained static page built from reader comments on two supplement articles:
+`public/index.html`: a self-contained static page built from reader comments on two supplement articles:
 
 | Source | Article |
 |---|---|
@@ -41,13 +41,13 @@ saved comment page ─▶ 1 parse ─▶ 2 extract ─▶ 3 cluster ─▶ 4 wri
 
 | Path | What it is |
 |---|---|
-| `public/community/` | The CollectiveMind page: `index.html` (data inlined, no external requests) and `knowledge.db` (SQLite: articles, cards, items, refs, disagreements, full-text indexes) |
+| `public/` | The CollectiveMind site: `index.html` (data inlined, no external requests) and `knowledge.db` (SQLite: articles, cards, items, refs, disagreements, full-text indexes) |
 | `comment-knowledge-generator/` | The pipeline that builds the page and database: `pipeline/` steps, `tests/`, `docs/HOW_IT_WORKS.md`, `docs/TESTING.md`, `Makefile`. See its README. |
 | `DEPLOY.md` | Netlify setup, auto-deploy, branch switching and rollback |
 
 ## Deploy on Netlify
 
-Set the site's production branch to `demo`, publish directory `public`, no build command. Every push to `demo` redeploys. Full steps in [`DEPLOY.md`](DEPLOY.md).
+Branch `demo`, publish directory `public`, no build command, no environment variables. Every push to `demo` redeploys. Full steps in [`DEPLOY.md`](DEPLOY.md).
 
 ## Run the pipeline locally
 
