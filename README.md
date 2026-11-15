@@ -4,6 +4,14 @@
 
 *General information only, not medical advice.*
 
+## Links
+
+| | |
+|---|---|
+| Live site | https://jovial-horse-40f601.netlify.app/ |
+| Demo video, deck and submission files (Google Drive) | https://drive.google.com/drive/folders/1XONsykBSVKMycstyiWm3JFiHbaZDE6Jm?usp=sharing |
+| Code (this branch) | https://github.com/sakshamaggarwal/Gtransformers-Hack/tree/demo |
+
 ## What's live
 
 `public/index.html`: a self-contained static page built from reader comments on two supplement articles:
