@@ -5,15 +5,15 @@ The site is static: `public/index.html` (the page, data inlined) and `public/kno
 ## Create the site (once)
 
 1. Netlify → **Add new site → Import an existing project → GitHub** → `Gtransformers-Hack`.
-2. Branch `demo`, base directory *(empty)*, build command *(empty)*, publish directory `public`.
+2. Branch `main`, base directory *(empty)*, build command *(empty)*, publish directory `public`.
 3. **Deploy**, then **Site configuration → Change site name**.
 
 ## Ship the latest version
 
-Every push to `demo` redeploys automatically; the URL stays the same.
+Every push to `main` redeploys automatically; the URL stays the same.
 
 ```bash
-git checkout demo && git pull
+git checkout main && git pull
 # ...make changes...
 git add -A && git commit -m "describe the change" && git push
 ```

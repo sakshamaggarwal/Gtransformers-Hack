@@ -10,7 +10,7 @@
 |---|---|
 | Live site | https://jovial-horse-40f601.netlify.app/ |
 | Demo video, deck and submission files (Google Drive) | https://drive.google.com/drive/folders/1XONsykBSVKMycstyiWm3JFiHbaZDE6Jm?usp=sharing |
-| Code (this branch) | https://github.com/sakshamaggarwal/Gtransformers-Hack/tree/demo |
+| Code | https://github.com/sakshamaggarwal/Gtransformers-Hack |
 
 ## What's live
 
@@ -55,7 +55,7 @@ saved comment page ─▶ 1 parse ─▶ 2 extract ─▶ 3 cluster ─▶ 4 wri
 
 ## Deploy on Netlify
 
-Branch `demo`, publish directory `public`, no build command, no environment variables. Every push to `demo` redeploys. Full steps in [`DEPLOY.md`](DEPLOY.md).
+Production branch `main`, publish directory `public`, no build command, no environment variables. Every push to `main` redeploys. Full steps in [`DEPLOY.md`](DEPLOY.md).
 
 ## Run the pipeline locally
 
