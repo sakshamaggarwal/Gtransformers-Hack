@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Test runner · Community knowledge generator</title>
+<style>
+:root{--bg:#faf9f6;--card:#fff;--ink:#1f1e1c;--muted:#6b6863;--line:#e4e1da;--accent:#3c5a99;--pass:#2f7d32;--fail:#b3261e;--skip:#8a6d00}
+@media (prefers-color-scheme:dark){:root{--bg:#191917;--card:#22221f;--ink:#ecebe6;--muted:#a3a19a;--line:#3a3935;--accent:#9db5ea;--pass:#7cc47f;--fail:#f2a29b;--skip:#e3c35c}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1000px;margin:0 auto;padding:32px 20px 60px}h1{font-size:26px;margin:0 0 4px;font-weight:600}
+.sub{color:var(--muted);margin:0 0 18px}.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 16px}
+input{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);min-width:220px}
+button,a.btn{padding:8px 14px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--bg);cursor:pointer;font-size:14px;text-decoration:none}
+button.secondary,a.btn.secondary{background:transparent;color:var(--accent)}
+.summary{font-size:16px;margin:8px 0 14px}.summary b{font-weight:600}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}th{font-size:13px;color:var(--muted);font-weight:600}
+td.st{font-weight:600;white-space:nowrap}.PASS{color:var(--pass)}.FAIL{color:var(--fail)}.SKIP{color:var(--skip)}.RUNNING{color:var(--muted)}
+td.d{color:var(--muted);font-size:13px}iframe{width:100%;height:420px;border:1px solid var(--line);border-radius:12px;margin-top:18px;background:#fff}
+.note{color:var(--muted);font-size:13px;margin-top:10px}
+</style></head><body><main>
+<h1>Test runner</h1>
+<p class="sub">Runs the web page checks (group G in <a href="data/test_cases.csv">the test case list</a>) against a published page.
+The other groups run from the command line with <code>make test</code>.</p>
+<div class="bar">
+  <label>Page to test <input id="target" value="index.html"></label>
+  <button id="run" type="button">Run tests</button>
+  <button id="csv" class="secondary" type="button" disabled>Download results (CSV)</button>
+  <a class="btn secondary" href="data/test_cases.csv">All test cases (CSV)</a>
+</div>
+<div class="summary" id="summary">Not run yet.</div>
+<table><thead><tr><th>ID</th><th>Test</th><th>Result</th><th>Details</th></tr></thead><tbody id="rows"></tbody></table>
+<iframe id="frame" title="Page under test"></iframe>
+<p class="note">Open this page through a local web server (<code>make serve</code>), not as a file: browsers block a page
+opened from disk from inspecting another page in a frame.</p>
+<pre id="results-json" hidden></pre>
+</main>
+<script>
+const P = new URLSearchParams(location.search);
+// Queries used by the checks; override with ?phrase=...&title_word=...&quote_phrase=...
+const Q = {phrase: P.get('phrase') || 'vitamin D', titleWord: P.get('title_word') || 'fish',
+           quotePhrase: P.get('quote_phrase') || 'consumer lab'};
+if (P.get('target')) document.getElementById('target').value = P.get('target');
+const frame = document.getElementById('frame');
+
+// Independent re-implementation of the page's matching rule: phrase, case-insensitive, word boundaries.
+function phraseRe(q) {
+  let s = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  if (/^\w/.test(q)) s = '\\b' + s; if (/\w$/.test(q)) s += '\\b';
+  return new RegExp(s, 'i');
+}
+function load(params) {
+  return new Promise((resolve, reject) => {
+    const url = document.getElementById('target').value + (params ? '?' + new URLSearchParams(params) : '');
+    const errors = [];
+    frame.onload = () => {
+      try {
+        const w = frame.contentWindow, doc = frame.contentDocument;
+        if (!doc || !doc.getElementById('data')) throw new Error('page has no data block (is this a published page?)');
+        w.addEventListener('error', e => errors.push(e.message));
+        setTimeout(() => resolve({w, doc, errors, data: JSON.parse(doc.getElementById('data').textContent)}), 80);
+      } catch (e) { reject(new Error('Cannot read the page: ' + e.message + '. Open the runner via make serve.')); }
+    };
+    frame.src = url + (url.includes('?') ? '&' : '?') + '_=' + Date.now();
+  });
+}
+const shownArticles = doc => [...doc.querySelectorAll('#cards article')];
+const itemLis = art => [...art.querySelectorAll(':scope > ul > li')].filter(li => !li.querySelector('.issue'));
+const sideLis = art => [...art.querySelectorAll(':scope > ul > li > ul > li')];
+const textOf = li => { const c = li.cloneNode(true); c.querySelectorAll('sup,.n,.flag,.via,ul').forEach(x => x.remove()); return c.textContent.trim(); };
+function expectedItems(data, re, section) {
+  // What the page should show: items (and disagreement sides) whose text or a cited quote matches.
+  let n = 0;
+  data.cards.forEach(c => {
+    const q = {}; c.refs.forEach(r => q[r.n] = r.quote);
+    const m = it => re.test(it.text) || it.refs.some(k => re.test(q[k] || ''));
+    c.sections.forEach(s => {
+      if (section && s.key !== section) return;
+      (s.items || []).forEach(it => { if (m(it)) n++; });
+      (s.disagreements || []).forEach(d => { if (re.test(d.issue) || d.sides.some(m)) n += d.sides.length; });
+    });
+  });
+  return n;
+}
+function check(cond, msg) { if (!cond) throw new Error(msg); }
+class Skip extends Error {}
+
+const TESTS = [
+  ['G01', 'No search: every card shown with a topic count', async () => {
+    const {doc, data, errors} = await load();
+    const n = shownArticles(doc).length;
+    check(n === data.cards.length, `${n} cards shown, data has ${data.cards.length}`);
+    check(doc.getElementById('count').textContent === `${n} of ${n} topics`, 'count text: ' + doc.getElementById('count').textContent);
+    check(!errors.length, 'page errors: ' + errors.join('; '));
+    return `${n} cards`;
+  }],
+  ['G02', `Phrase search "${Q.phrase}" with Advice filter shows only matching advice items`, async () => {
+    const {doc, data} = await load({q: Q.phrase, section: 'advice'});
+    const re = phraseRe(Q.phrase), arts = shownArticles(doc);
+    const exp = expectedItems(data, re, 'advice');
+    if (!exp) throw new Skip(`no advice item mentions "${Q.phrase}" in this page's data`);
+    const label = (data.cards.flatMap(c => c.sections).find(s => s.key === 'advice') || {}).label;
+    const heads = arts.flatMap(a => [...a.querySelectorAll('h3')].map(h => h.textContent));
+    check(heads.every(h => h === label), 'other sections shown: ' + [...new Set(heads)].join(', '));
+    const lis = arts.flatMap(itemLis);
+    lis.forEach(li => check(re.test(textOf(li)) || li.querySelector('.via'), 'non-matching item shown: ' + textOf(li).slice(0, 80)));
+    check(lis.length === exp, `${lis.length} items shown, expected ${exp}`);
+    return `${lis.length} item(s) in ${arts.length} card(s)`;
+  }],
+  ['G03', 'Word boundary: "vitamin d" never highlights inside "vitamin deficiency"', async () => {
+    const {doc} = await load({q: 'vitamin d'});
+    const marks = [...doc.querySelectorAll('mark')].map(m => m.textContent);
+    if (!marks.length) throw new Skip('no "vitamin d" in this page');
+    const bad = marks.filter(t => !/^vitamin\s+d$/i.test(t));
+    check(!bad.length, 'unexpected highlights: ' + bad.join(', '));
+    const leaks = [...doc.querySelectorAll('#cards li')].filter(li => /vitamin deficiency/i.test(textOf(li)) &&
+      !/\bvitamin\s+d\b/i.test(textOf(li)) && !li.querySelector('.via') && !li.querySelector('ul'));
+    check(!leaks.length, 'item matched only "vitamin deficiency": ' + (leaks[0] && textOf(leaks[0])));
+    return `${marks.length} highlight(s), all exact`;
+  }],
+  ['G04', `A card whose title matches "${Q.titleWord}" still hides items that don't`, async () => {
+    const {doc, data} = await load({q: Q.titleWord});
+    const re = phraseRe(Q.titleWord);
+    if (!data.cards.some(c => re.test(c.title))) throw new Skip(`no card title contains "${Q.titleWord}"`);
+    const arts = shownArticles(doc);
+    arts.flatMap(itemLis).forEach(li => check(re.test(textOf(li)) || li.querySelector('.via'), 'non-matching item: ' + textOf(li).slice(0, 80)));
+    const shown = arts.flatMap(a => [...itemLis(a), ...sideLis(a)]).length;
+    check(shown === expectedItems(data, re), `${shown} items shown, expected ${expectedItems(data, re)}`);
+    return `${shown} matching item(s)`;
+  }],
+  ['G05', `Match inside a quoted comment ("${Q.quotePhrase}"): labelled, sources opened, quote highlighted`, async () => {
+    const {doc} = await load({q: Q.quotePhrase});
+    const via = [...doc.querySelectorAll('.via')];
+    if (!via.length) throw new Skip(`no item matches "${Q.quotePhrase}" only through a quote`);
+    via.forEach(v => {
+      const art = v.closest('article'), det = art.querySelector('details');
+      check(det.open, 'sources not opened on ' + art.id);
+      check(det.querySelector('ol mark'), 'quote not highlighted on ' + art.id);
+    });
+    return `${via.length} item(s) matched through a quote`;
+  }],
+  ['G06', 'While searching, sources list only comments cited by shown items, with original numbers', async () => {
+    const {doc} = await load({q: Q.quotePhrase});
+    const arts = shownArticles(doc);
+    if (!arts.length) throw new Skip('no results for ' + Q.quotePhrase);
+    arts.forEach(a => {
+      const cited = new Set([...a.querySelectorAll('sup a')].map(x => +x.textContent.replace(/\D/g, '')));
+      const listed = [...a.querySelectorAll('ol.refs > li')];
+      listed.forEach(li => {
+        const n = +li.id.split('-r').pop();
+        check(cited.has(n), `source ${n} listed but not cited on ${a.id}`);
+        check(li.value === n, `source ${n} renumbered to ${li.value}`);
+      });
+      check(listed.length === cited.size, `${a.id}: ${cited.size} cited, ${listed.length} listed`);
+    });
+    return `${arts.length} card(s) checked`;
+  }],
+  ['G07', 'Hyphens and regex characters are safe in search', async () => {
+    for (const q of ['omega-3', '(', 'a+b', '[x]']) {
+      const {doc, errors} = await load({q});
+      check(!errors.length, `errors for "${q}": ` + errors.join('; '));
+      check(/topics/.test(doc.getElementById('count').textContent), `page did not render for "${q}"`);
+    }
+    return 'omega-3, (, a+b, [x]';
+  }],
+  ['G08', 'URL parameters set the search box and section chip', async () => {
+    const {doc} = await load({q: Q.titleWord, section: 'claims'});
+    check(doc.getElementById('q').value === Q.titleWord, 'search box not set');
+    const pressed = [...doc.querySelectorAll('.chip[aria-pressed="true"]')].map(c => c.textContent);
+    check(pressed.length === 1 && pressed[0] === 'Claims', 'pressed chip: ' + pressed.join(','));
+    return 'ok';
+  }],
+  ['G09', 'Section chip without a search shows only that section', async () => {
+    const {doc, data} = await load();
+    const chip = [...doc.querySelectorAll('.chip')].find(c => c.textContent === 'Advice');
+    chip.click();
+    const label = (data.cards.flatMap(c => c.sections).find(s => s.key === 'advice') || {}).label;
+    if (!label) throw new Skip('page has no advice sections');
+    const heads = [...doc.querySelectorAll('#cards h3')].map(h => h.textContent);
+    check(heads.length && heads.every(h => h === label), 'other sections: ' + [...new Set(heads)].join(', '));
+    const exp = data.cards.filter(c => c.sections.some(s => s.key === 'advice')).length;
+    check(shownArticles(doc).length === exp, `${shownArticles(doc).length} cards, expected ${exp}`);
+    return `${exp} card(s) with advice`;
+  }],
+  ['G10', 'Health cards show the not-medical-advice note', async () => {
+    const {doc, data} = await load();
+    const exp = data.cards.filter(c => c.health).length;
+    const got = doc.querySelectorAll('#cards .note').length;
+    check(got === exp, `${got} notes, ${exp} health cards`);
+    return `${got} note(s)`;
+  }],
+];
+
+let results = [];
+async function runAll() {
+  const tbody = document.getElementById('rows'); tbody.replaceChildren(); results = [];
+  document.getElementById('csv').disabled = true;
+  const cells = {};
+  TESTS.forEach(([id, title]) => {
+    const tr = document.createElement('tr');
+    [id, title, 'RUNNING', ''].forEach((t, i) => { const td = document.createElement('td'); td.textContent = t;
+      if (i === 2) td.className = 'st RUNNING'; if (i === 3) td.className = 'd'; tr.appendChild(td); });
+    tbody.appendChild(tr); cells[id] = tr.children;
+  });
+  for (const [id, title, fn] of TESTS) {
+    let status = 'PASS', detail = '';
+    try { detail = await fn() || ''; }
+    catch (e) { status = e instanceof Skip ? 'SKIP' : 'FAIL'; detail = e.message; }
+    cells[id][2].textContent = status; cells[id][2].className = 'st ' + status; cells[id][3].textContent = detail;
+    results.push({id, title, status, detail});
+  }
+  const c = s => results.filter(r => r.status === s).length;
+  document.getElementById('summary').innerHTML = '';
+  const b = document.createElement('b'); b.textContent = `${c('PASS')} passed, ${c('FAIL')} failed, ${c('SKIP')} skipped`;
+  document.getElementById('summary').append(b, ` of ${results.length} checks on ${document.getElementById('target').value}`);
+  const pre = document.getElementById('results-json'); pre.textContent = JSON.stringify(results);
+  document.body.dataset.done = '1';
+  document.getElementById('csv').disabled = false;
+}
+document.getElementById('run').onclick = runAll;
+document.getElementById('csv').onclick = () => {
+  const esc = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const csv = ['id,title,status,detail', ...results.map(r => [r.id, r.title, r.status, r.detail].map(esc).join(','))].join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
+  a.download = 'ui_test_results.csv'; a.click();
+};
+if (P.get('autorun') !== '0') runAll();
+</script></body></html>
