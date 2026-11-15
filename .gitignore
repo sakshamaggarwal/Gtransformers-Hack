@@ -1,6 +1,9 @@
 .netlify
 node_modules/
 .env
+.env.*
+!.env.example
+*.pem
 reports/*
 !reports/.gitkeep
 .DS_Store
