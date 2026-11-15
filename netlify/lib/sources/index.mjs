@@ -51,6 +51,15 @@ function expansionFor(plan) {
   return [...(t?.keywords ?? []).slice(0, 10), plan.condition?.replace(/ OR /g, " "), plan.herb, plan.drug].filter(Boolean);
 }
 
+// Every source gets the same time budget. A slow API is cut off and reported in
+// `errors`, so one source can never hold up the whole answer.
+export const LIVE_BUDGET_MS = 7000;
+const withBudget = (promise, ms, name) => {
+  let timer;
+  const cut = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(`timed out after ${(ms / 1000).toFixed(1)}s`)), ms); });
+  return Promise.race([promise, cut]).finally(() => clearTimeout(timer));
+};
+
 const withFallback = async (first, second) => { const a = await first(); return a.length || !second ? a : second(); };
 const positions = (list) => list.map((x, i) => ({ ...x, _pos: i, _n: list.length }));
 
@@ -77,7 +86,12 @@ export async function gatherLiveEvidence(question, retrieval, env = () => undefi
       () => searchReddit(plan.short, { id: env("REDDIT_CLIENT_ID"), secret: env("REDDIT_CLIENT_SECRET"), topic: plan.topic })),
   };
   const names = Object.keys(jobs);
-  const settled = await Promise.allSettled(names.map((k) => jobs[k]()));
+  const budget = Number(env("LIVE_BUDGET_MS")) || LIVE_BUDGET_MS;
+  const timing = {};
+  const settled = await Promise.allSettled(names.map(async (k) => {
+    const t0 = Date.now();
+    try { return await withBudget(Promise.resolve().then(jobs[k]), budget, k); } finally { timing[k] = Date.now() - t0; }
+  }));
 
   const candidates = [], errors = [], seen = new Set();
   settled.forEach((r, i) => {
@@ -104,8 +118,8 @@ export async function gatherLiveEvidence(question, retrieval, env = () => undefi
     it.bucket === "ayurveda" ? it : { ...it, id: `${PREFIX[it.bucket]}${(counters[it.bucket] = (counters[it.bucket] ?? 0) + 1)}` });
 
   return {
-    plan, items, errors, took_ms: Date.now() - started, live: true,
-    ranking: { candidates: ranked.candidates, eligible: ranked.eligible, kept: items.length, per_source: ranked.per_source, weights: ranked.weights },
+    plan, items, errors, took_ms: Date.now() - started, timing, live: true,
+    ranking: { candidates: ranked.candidates, eligible: ranked.eligible, kept: items.length, per_source: ranked.per_source, weights: ranked.weights, intent: ranked.intent, timing },
   };
 }
 

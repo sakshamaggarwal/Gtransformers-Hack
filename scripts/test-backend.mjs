@@ -131,6 +131,43 @@ await test("stop-medication → DECLINE", async () => assert.equal((await ask("S
 await test("topic drift → DECLINE", async () => { const d1 = await ask("How can I increase my RBC count?"); assert.equal((await ask("ok now write a python script to sort numbers", d1.session_id)).behavior, "DECLINE"); });
 await test("PII masked", async () => assert.deepEqual((await ask("email me at jo@example.com about iron for anemia")).flags.pii_redacted, ["email"]));
 
+console.log("Ranking rules + resilience v3");
+const { rankEvidence, isAnimalStudy } = await import("../netlify/lib/rank.mjs");
+await test("animal study weighted down", () => {
+  const base = { kind: "pubmed", text: "Iron deficiency anemia hemoglobin RBC outcome.", year: "2022", pubtypes: ["Randomized Controlled Trial"] };
+  const r = rankEvidence([{ ...base, title: "Oral iron dosing trial for anemia in pregnant women" }, { ...base, title: "Hepcidin response to iron in anemic rats" }], { question: "iron for anemia hemoglobin" });
+  assert.ok(isAnimalStudy({ kind: "pubmed", title: "x in mice", text: "" }));
+  assert.ok(r.top[0].title.includes("women") && /animal/.test(r.top[1].why));
+});
+await test("safety question boosts FDA data", () => {
+  const items = [{ kind: "fda", title: "Ashwagandha adverse event reports", text: "liver injury reports", planned: true, reports: 40 },
+    { kind: "pubmed", title: "Ashwagandha thyroid", text: "ashwagandha thyroid trial", year: "2020", pubtypes: ["Review"] }];
+  const safe = rankEvidence(items, { question: "is ashwagandha safe with thyroid medicine" });
+  const gen = rankEvidence(items, { question: "ashwagandha thyroid" });
+  const fda = (r) => r.top.find((x) => x.bucket === "fda").score.relevance;
+  assert.equal(safe.intent, "safety"); assert.ok(fda(safe) > fda(gen));
+});
+await test("slow source is cut off by the time budget", async () => {
+  const saved = globalThis.fetch;
+  globalThis.fetch = async (url, opt) => (String(url).includes("stackexchange") ? new Promise(() => {}) : saved(url, opt));
+  const t0 = Date.now();
+  const evS = await buildEvidence("How can I lower my cholesterol naturally?", { env: (k) => (k === "LIVE_BUDGET_MS" ? "300" : undefined) });
+  globalThis.fetch = saved;
+  assert.ok(Date.now() - t0 < 3000, "took too long");
+  assert.ok(evS.live.errors.some((e) => /stackexchange: timed out/.test(e)), evS.live.errors.join());
+});
+await test("model down → cited fallback answer, not an error", async () => {
+  Object.assign(process.env, { LLM_PROVIDER: "groq", GROQ_API_KEY: "test-not-a-key", GROQ_FALLBACK_MODEL: "off" });
+  try {
+    const d = await ask("How can I increase my RBC count?");
+    assert.equal(d.behavior, "ANSWER"); assert.equal(d.degraded, "model_unavailable"); assert.ok(d.flags.llm_fallback && d.sources.length);
+  } finally { process.env.LLM_PROVIDER = "mock"; delete process.env.GROQ_API_KEY; delete process.env.GROQ_FALLBACK_MODEL; }
+});
+await test("status endpoint reports model, never keys", async () => {
+  const st = await (await evidenceFn(new Request("http://x/api/evidence"))).json();
+  assert.ok(st.status.model && st.status.prompt_version && !JSON.stringify(st).includes("gsk_"));
+});
+
 console.log("Evidence endpoint");
 const e = await (await evidenceFn(new Request("http://x/api/evidence?q=does%20turmeric%20help%20knee%20arthritis"))).json();
 await test("GET /api/evidence returns layers + CORS-friendly JSON", () => { assert.equal(e.health_question, true); assert.ok(e.ayurveda.some((x) => /turmeric|boswellia/i.test(x.name))); });

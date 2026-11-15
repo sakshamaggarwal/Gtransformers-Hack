@@ -10,7 +10,7 @@
 
 import { buildEvidence } from "../../lib/evidence.mjs";
 import { validateMessage, redactPII } from "../../lib/checks.mjs";
-import { env } from "../../lib/llm.mjs";
+import { env, provider, modelName, PROMPT_VERSION } from "../../lib/llm.mjs";
 import { KB_STATS } from "../../lib/health.mjs";
 
 
@@ -20,7 +20,11 @@ export default async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   const q = new URL(req.url).searchParams.get("q");
   // No question: a health check (the front end uses it to detect a same-origin backend).
-  if (!q) return Response.json({ ok: true, usage: "add ?q=your health question", knowledge_base: KB_STATS }, { headers: CORS });
+  if (!q) return Response.json({
+    ok: true, usage: "add ?q=your health question", knowledge_base: KB_STATS,
+    // What the UI shows in its status pill. Never includes keys.
+    status: { provider: provider(), model: modelName(), prompt_version: PROMPT_VERSION, live_sources: (env("LIVE_SOURCES") ?? "on").toLowerCase() !== "off" },
+  }, { headers: CORS });
   const input = validateMessage(q);
   if (!input.ok) return Response.json({ error: input.error }, { status: 400, headers: CORS });
 

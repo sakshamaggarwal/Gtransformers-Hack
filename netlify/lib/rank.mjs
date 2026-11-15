@@ -16,6 +16,10 @@
 //
 //   total = 0.38 relevance + 0.25 trust + 0.15 credibility + 0.12 recency + 0.10 engagement
 //
+// Adjustments: a safety question ("is X safe with Y?") gives FDA data and items
+// about interactions / side effects +0.12 relevance; animal and lab studies get
+// 0.75x trust. Both show up in the item's "why" text.
+//
 // Items below MIN_RELEVANCE, or rejected by the community trust filter (scams,
 // promotions, "stop your meds"), are dropped. The top 10 are then picked with
 // a SOURCE DIVERSITY rule: the best item of every source that has a relevant
@@ -119,6 +123,15 @@ function credibility(it, b) {
   return clamp(c);
 }
 
+// ---- question intent + study type ------------------------------------------------
+// "Is X safe with Y?" style questions: safety data is what the person needs most.
+export const SAFETY_INTENT = /\b(safe|safety|side[- ]?effects?|interact(s|ion|ions)?|together with|combine|combining|with my|pregnan\w*|breastfeed\w*|risks?|toxic\w*|overdose|liver|kidney)\b/i;
+const SAFETY_TEXT = /\b(adverse|interaction|toxicit\w*|hepatotox\w*|liver injury|contraindicat\w*|warning|side effects?|caution|overdose|bleeding risk|recall)\b/i;
+// Animal and lab studies say little about what a person should do: lower trust.
+const ANIMAL = /\b(rats?|mice|murine|rodents?|in vitro|animal model|zebrafish|rabbits?|cell lines?)\b/i;
+const HUMAN = /\b(patients?|participants|humans?|women|men|children|adults|volunteers|subjects)\b/i;
+export const isAnimalStudy = (it) => it.kind === "pubmed" && ANIMAL.test(`${it.title} ${it.text ?? ""}`) && !HUMAN.test(it.title);
+
 // ---- score one candidate --------------------------------------------------------
 export function scoreItem(it, ctx) {
   const b = bucketOf(it);
@@ -138,13 +151,17 @@ export function scoreItem(it, ctx) {
     engagement: engagement(it, b),
     credibility: credibility(it, b),
   };
+  const safetyBoost = ctx.safetyIntent && (b === "fda" || SAFETY_TEXT.test(`${it.title} ${it.text ?? ""} ${it.cautions ?? ""}`));
+  if (safetyBoost) s.relevance = clamp(s.relevance + 0.12);
+  const animal = isAnimalStudy(it);
+  if (animal) s.trust *= 0.75;
   if (s.relevance < MIN_RELEVANCE) return null;
   const total = Object.entries(WEIGHTS).reduce((n, [k, w]) => n + w * s[k], 0);
   return {
     ...it, bucket: b, signals: it.signals ?? signals,
     trust: Math.round(100 * (0.7 * s.trust + 0.3 * s.credibility)), // 0-100 shown on the source card
     score: { total: r2(total), ...Object.fromEntries(Object.entries(s).map(([k, v]) => [k, r2(v)])) },
-    why: explain(s, it, b),
+    why: [explain(s, it, b), safetyBoost && "safety data for a safety question", animal && "animal / lab study (weighted down)"].filter(Boolean).join(" · "),
   };
 }
 
@@ -174,7 +191,8 @@ export function rankEvidence(candidates, { question, expansion = [] }, { k = TOP
   const docs = candidates.map((c) => new Set(tokenize(`${c.title} ${c.text ?? ""}`)));
   const idf = (t) => Math.log(1 + (docs.length + 1) / (1 + docs.filter((d) => d.has(t)).length));
 
-  const scored = candidates.map((c) => scoreItem(c, { core, expansion: exp, idf, now })).filter(Boolean)
+  const safetyIntent = SAFETY_INTENT.test(question);
+  const scored = candidates.map((c) => scoreItem(c, { core, expansion: exp, idf, now, safetyIntent })).filter(Boolean)
     .sort((a, b) => b.score.total - a.score.total);
 
   const picked = [], count = {};
@@ -195,5 +213,5 @@ export function rankEvidence(candidates, { question, expansion = [] }, { k = TOP
   for (const c of candidates) { const b = bucketOf(c); per_source[b] ??= { fetched: 0, eligible: 0, kept: 0 }; per_source[b].fetched++; }
   for (const s of scored) per_source[s.bucket].eligible++;
   for (const t of top) per_source[t.bucket].kept++;
-  return { top, per_source, candidates: candidates.length, eligible: scored.length, weights: WEIGHTS };
+  return { top, per_source, candidates: candidates.length, eligible: scored.length, weights: WEIGHTS, intent: safetyIntent ? "safety" : "general" };
 }
