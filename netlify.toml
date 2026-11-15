@@ -1,0 +1,11 @@
+[build]
+  publish   = "public"              # Vaidya Pulse (index.html), simple chat (chat.html), sample tests
+  functions = "netlify/functions"   # /api/chat and /api/session
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://eutils.ncbi.nlm.nih.gov https://clinicaltrials.gov https://api.fda.gov https://api.stackexchange.com https://www.reddit.com"

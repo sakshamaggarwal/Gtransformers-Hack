@@ -89,6 +89,8 @@ a{color:var(--primary)}
 .lg-hse{background:#FCEBD5;color:#93540D}
 .lg-ayur{background:#F7ECD8;color:#8A5A0E}
 .lg-llm{background:var(--primary-soft);color:var(--primary)}
+.lg-nih{background:#E1ECF7;color:#20558A}
+.lg-community{background:var(--comm-soft);color:var(--comm)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .logo:not(.lg-llm){filter:saturate(.9) brightness(.92)}}
 .model{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;background:var(--surface-2);margin-top:10px}
 .model b{font-size:13px;display:block}
@@ -184,6 +186,14 @@ form.q input{flex:1;min-width:0;border:0;background:transparent;padding:10px 10p
 .tier.trad{background:var(--ayur-soft);color:var(--ayur)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tier.reg{background:#222A40;color:#AFC0F0}}
 :root[data-theme="dark"] .tier.reg{background:#222A40;color:#AFC0F0}
+.card .rk{font-family:var(--f-mono);font-size:11px;font-weight:600;background:var(--ink);color:var(--bg);border-radius:6px;padding:2px 6px;flex:none}
+.card .why{font-size:12px;color:var(--primary);line-height:1.35}
+.sb{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+.sb .bar{width:100%}
+.refs{font-size:12.5px;color:var(--muted)}
+.errcard{background:var(--danger-soft);border:1px solid var(--danger);border-radius:14px;padding:16px 18px;font-size:14px}
+.errcard h4{margin:0 0 6px;color:var(--danger);font-family:var(--f-display)}
+.errcard code{font-family:var(--f-mono);font-size:12.5px;background:var(--surface);padding:1px 5px;border-radius:5px}
 .card a{font-size:12px;font-weight:600;text-decoration:none}
 .card a:hover{text-decoration:underline}
 
@@ -238,7 +248,7 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
     <aside class="rail">
       <section class="panel" aria-labelledby="srcH">
         <h2 id="srcH">Sources queried</h2>
-        <p class="sub">Each question fans out to six sources, then Llama 3.1 8B writes one cited answer.</p>
+        <p class="sub">Each question fans out to six sources live, the results are ranked, and Llama 3.1 8B writes one cited answer from the top 10.</p>
         <ul class="srclist" id="srcList"></ul>
         <div class="model">
           <div class="logo lg-llm">L3</div>
@@ -247,8 +257,8 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
         </div>
       </section>
       <section class="panel" aria-labelledby="trH">
-        <h2 id="trH">How we score trust</h2>
-        <p class="sub">Every source card carries a tier and a 0–100 trust score.</p>
+        <h2 id="trH">How we rank</h2>
+        <p class="sub">Every fetched item is scored on relevance (38%), trust (25%), author credibility (15%), recency (12%) and engagement (10%). The top 10 are kept, with at least one from each source that had a relevant hit and at most 3 per source.</p>
         <div class="legend">
           <div><span class="tier peer">Peer-reviewed</span> PubMed studies, weighted by study type</div>
           <div><span class="tier reg">Regulator</span> FDA safety data and trial registries</div>
@@ -280,24 +290,26 @@ dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 
 <dialog id="settings" aria-labelledby="setH">
   <h3 id="setH">Connect the live backend</h3>
-  <p class="sub" style="color:var(--muted);margin:0;font-size:13.5px">Point the app at your deployed API (for example the Netlify site). The backend calls Llama 3.1 8B on Groq and returns the answer shape below. Without it, the app uses curated sample answers.</p>
+  <p class="sub" style="color:var(--muted);margin:0;font-size:13.5px">When this page is served by the backend (<code>npm start</code> locally, or the Netlify site) it connects automatically. Otherwise, paste the backend URL. For every question the backend fetches PubMed, ClinicalTrials.gov, OpenFDA, Health Stack Exchange, Reddit and the Ayurvedic KB live, ranks everything, and sends the top 10 to Llama 3.1 8B on Groq.</p>
   <label for="apiBase">Backend URL</label>
-  <input type="text" id="apiBase" placeholder="https://your-site.netlify.app">
-  <label class="toggle" for="liveSrc"><input type="checkbox" id="liveSrc"> Also fetch sources live in the browser (PubMed, OpenFDA, ClinicalTrials.gov, Stack Exchange, Reddit)</label>
-  <p style="color:var(--muted);font-size:12.5px;margin:8px 0 0">Live calls work when the app is hosted on your own site. Inside this preview, outside requests are blocked, so the app falls back to samples automatically.</p>
+  <input type="text" id="apiBase" placeholder="http://localhost:8888 or https://your-site.netlify.app">
+  <label class="toggle" for="liveSrc"><input type="checkbox" id="liveSrc"> Without a backend: fetch sources directly in the browser (unranked, no AI answer)</label>
   <label>Response contract: POST /api/chat</label>
   <pre>// request
-{ "message": "how can I increase my RBC count?" }
-// response (structured; a plain { "reply": "..." } also works)
+{ "message": "how can I increase my RBC count?", "session_id": "optional" }
+// response (excerpt)
 { "summary": "...",
-  "clinical":  [{ "text": "...", "cites": [1,2] }],
-  "ayurvedic": [{ "herb": "Punarnava", "sanskrit": "Boerhavia diffusa",
-                  "use": "...", "evidence": "limited", "caution": "...", "cites": [5] }],
-  "community": [{ "text": "...", "who": "r/Anemic · 412 upvotes", "cites": [7] }],
-  "safety":    [{ "text": "...", "cites": [3] }],
+  "clinical":  [{ "text": "...", "cites": ["P1","E1"] }],
+  "ayurvedic": [{ "herb": "Punarnava", "sanskrit": "Boerhavia diffusa", "use": "...",
+                  "evidence": "limited", "evidence_label": "limited", "caution": "...", "cites": ["A1"] }],
+  "community": [{ "text": "...", "who": "Reddit r/Anemia · heme_doc · 150 upvotes", "cites": ["R1"] }],
+  "safety":    [{ "text": "...", "cites": ["F1"] }],
   "redFlags":  ["..."],
-  "sources":   [{ "id": 1, "src": "pubmed", "title": "...", "snippet": "...",
-                  "meta": "...", "url": "...", "trust": 92 }],
+  "sources":   [{ "id": "P1", "src": "pubmed", "rank": 1, "title": "...", "snippet": "...", "meta": "...",
+                  "url": "...", "trust": 94, "why": "randomized controlled trial · recent",
+                  "score": { "total": 0.73, "relevance": 0.61, "trust": 0.95, "recency": 0.65,
+                             "engagement": 0.5, "credibility": 0.9 } }],
+  "ranking":   { "candidates": 42, "kept": 10, "per_source": { "pubmed": { "fetched": 8, "kept": 3 } } },
   "crisis": false }</pre>
   <div class="row">
     <button class="btn-ghost" type="button" id="clearSettings">Use samples</button>
@@ -315,7 +327,11 @@ const SOURCES = {
   ayur:    {name:"Ayurvedic herb KB", desc:"Local herb knowledge base", logo:"AY", tier:"trad", tierLbl:"Traditional"},
   hse:     {name:"Health Stack Exchange", desc:"Moderated Q&A", logo:"SE", tier:"mod", tierLbl:"Moderated"},
   reddit:  {name:"Reddit", desc:"Community discussions", logo:"R/", tier:"com", tierLbl:"Community"},
+  nih:     {name:"Clinical reference", desc:"NIH ODS, NHLBI, AHA fact sheets", logo:"NIH", tier:"reg", tierLbl:"Reference"},
+  community:{name:"Community sample", desc:"Bundled demo comment (synthetic)", logo:"CM", tier:"com", tierLbl:"Demo sample"},
 };
+// backend ranking buckets -> rail rows
+const BUCKET = {pubmed:"pubmed", trial:"ctgov", fda:"openfda", ayurveda:"ayur", hse:"hse", reddit:"reddit"};
 const ORDER = ["pubmed","ctgov","openfda","ayur","hse","reddit"];
 const enc = encodeURIComponent;
 const pm = q => `https://pubmed.ncbi.nlm.nih.gov/?term=${enc(q)}`;
@@ -569,10 +585,26 @@ const LIVE = {
   async ayur(q){ const h=herbsFor(q); return {count:h.length, items:h.slice(0,2).map(x=>({src:"ayur",title:`${x.herb} (${x.sk})`,snippet:x.use,meta:"Local herb KB",url:pm(x.sk),trust:62}))}; },
 };
 
+let sessionId = null;
 async function callBackend(q){
-  const r = await fetch(cfg.api.replace(/\/$/,"")+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q,mode:"health-intel"})});
-  if(!r.ok) throw new Error("Backend returned "+r.status);
-  return r.json();
+  const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 45000);
+  try{
+    const r = await fetch(cfg.api.replace(/\/$/,"")+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q,session_id:sessionId||undefined}),signal:ctl.signal});
+    const b = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(b.error || ("Backend returned "+r.status));
+    if(b.session_id) sessionId = b.session_id;
+    return b;
+  } finally { clearTimeout(t); }
+}
+// Same-origin backend (the page is served by Netlify or `npm start`)? Use it automatically.
+async function detectBackend(){
+  if(!/^https?:$/.test(location.protocol)) return false;
+  try{
+    const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 2500);
+    const r = await fetch("/api/evidence",{signal:ctl.signal}); clearTimeout(t);
+    const b = await r.json();
+    return Boolean(b && b.knowledge_base);
+  }catch(e){ return false; }
 }
 
 /* ---------- Ask flow ---------- */
@@ -590,6 +622,29 @@ async function ask(q){
   const t0=performance.now();
   const demo = matchDemo(q);
   let liveResults=null, backend=null, note="";
+
+  // Live backend: the server fetches all six sources, ranks them and keeps the top 10.
+  if(cfg.api){
+    ORDER.forEach(k=>setStatus(k,"run",'<span class="spin"></span>'));
+    setStatus("llm","run",'<span class="spin"></span>');
+    let b=null, err=null;
+    try{ b = await callBackend(q); }catch(e){ err = e; }
+    const secs=((performance.now()-t0)/1000).toFixed(1);
+    if(err){
+      ORDER.forEach(k=>setStatus(k,"fail","—")); setStatus("llm","fail","error");
+      out.innerHTML = errorCard(err);
+    } else {
+      const ps = b.ranking?.per_source || {};
+      const failed = new Set((b.live_errors||[]).map(e=>BUCKET[{clinicaltrials:"trial",openfda:"fda",stackexchange:"hse"}[e.split(":")[0]] || e.split(":")[0]]));
+      ORDER.forEach(k=>{ const bk=Object.keys(BUCKET).find(x=>BUCKET[x]===k); const v=ps[bk];
+        if(failed.has(k)) setStatus(k,"fail","offline");
+        else setStatus(k, v&&v.fetched?"done":"", v?`${v.kept}/${v.fetched} kept`:"0 hits"); });
+      setStatus("llm","done","done");
+      if(b.crisis || b.behavior==="CARE") out.innerHTML = crisisCard("self");
+      else out.innerHTML = renderAnswer(fromBackend(q,b), secs, {mode:"live", ranking:b.ranking, model:b.model, provider:b.provider, errors:b.live_errors||[]});
+    }
+    busy=false; $("#go").disabled=false; return;
+  }
 
   // fan out
   const tasks = ORDER.map(async (k,i)=>{
@@ -632,9 +687,24 @@ async function ask(q){
 function fromBackend(q,b){
   if(typeof b.reply==="string" && !b.summary){ return {q, summary:b.reply, clinical:[], ayurItems:herbsFor(q), ayurC:[], community:[], safety:[], flags:[], sources:b.sources||[]}; }
   return {q, summary:b.summary, clinical:(b.clinical||[]).map(x=>({t:x.text,c:x.cites||[]})),
-    ayurItems:(b.ayurvedic||[]).map(a=>({herb:a.herb,sk:a.sanskrit,use:a.use,ev:{traditional:"t",limited:"l",moderate:"m",caution:"c"}[a.evidence]||"t",caution:a.caution,c:a.cites})),
+    ayurItems:(b.ayurvedic||[]).map(a=>({herb:a.herb,sk:a.sanskrit,use:a.use,ev:evKey(a.evidence),evLabel:a.evidence_label,caution:a.caution,c:a.cites})),
     ayurC:[], community:(b.community||[]).map(x=>({t:x.text,who:x.who,c:x.cites||[]})),
     safety:(b.safety||[]).map(x=>({t:x.text,c:x.cites||[]})), flags:b.redFlags||[], sources:b.sources||[]};
+}
+
+// Backend evidence values -> badge keys. Accepts the short vocabulary (moderate | limited |
+// traditional | caution) and the knowledge base's longer wording ("moderate (mechanism)", "safety warning").
+function evKey(e){
+  const s=String(e||"").toLowerCase();
+  if(/safety|warning|caution|not supported|prescription/.test(s)) return "c";
+  if(/moderate/.test(s)) return "m";
+  if(/limited/.test(s)) return "l";
+  return "t";
+}
+function errorCard(err){
+  return `<section class="errcard fade" role="alert"><h4>Could not reach the live backend</h4>
+    <p style="margin:0 0 8px">${esc(err && err.message || err)}</p>
+    <p style="margin:0">Start it with <code>npm start</code> (needs only <code>GROQ_API_KEY</code> in <code>.env</code>), or check the backend URL under “Connect backend”.</p></section>`;
 }
 
 function fallbackView(q){
@@ -644,8 +714,8 @@ function fallbackView(q){
 }
 
 /* ---------- Rendering ---------- */
-const EV = {t:"Traditional use",l:"Limited trials",m:"Moderate evidence",c:"Prescription-strength"};
-const cites = arr => (arr||[]).map(n=>`<button type="button" class="cite" data-c="${n}" aria-label="Source ${n}">[${n}]</button>`).join("");
+const EV = {t:"Traditional use",l:"Limited trials",m:"Moderate evidence",c:"Use with caution"};
+const cites = arr => (arr||[]).map(n=>`<button type="button" class="cite" data-c="${esc(n)}" aria-label="Source ${esc(n)}">[${esc(n)}]</button>`).join("");
 function avgTrust(srcs, keys){const xs=srcs.filter(s=>keys.includes(s.src)).map(s=>s.trust); return xs.length?Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null;}
 function trustColor(t){return t>=80?"var(--ok)":t>=60?"var(--ayur)":"var(--comm)";}
 
@@ -653,17 +723,23 @@ function renderAnswer(v, secs, opt){
   const S=v.sources||[];
   const tc=avgTrust(S,["pubmed","ctgov","openfda"]), ta=avgTrust(S,["ayur"]), tm=avgTrust(S,["reddit","hse"]);
   const nSrc=new Set(S.map(s=>s.src)).size;
-  const banner = opt.mode==="demo" ? `<div class="banner fade"><b>Sample answer.</b> Curated for the demo from the six sources. Connect the backend to generate answers live with Llama 3.1 8B.</div>` : (opt.note?`<div class="banner fade"><b>Note.</b> ${esc(opt.note)}</div>`:"");
+  const R=opt.ranking;
+  const banner = opt.mode==="demo" ? `<div class="banner fade"><b>Sample answer.</b> Curated for the demo from the six sources. Connect the backend to generate answers live with Llama 3.1 8B.</div>`
+    : opt.mode==="live" ? `<div class="banner fade"><b>Live.</b> Fetched ${R?R.candidates:S.length} items from ${R?Object.values(R.per_source||{}).filter(v=>v.fetched).length:nSrc} sources just now, ranked by relevance, trust, recency, engagement and author credibility; top ${R?R.kept:S.length} sent to ${esc(opt.model||"the model")}.${opt.errors&&opt.errors.length?` Unavailable: ${esc(opt.errors.map(e=>e.split(":")[0]).join(", "))}.`:""}</div>`
+    : (opt.note?`<div class="banner fade"><b>Note.</b> ${esc(opt.note)}</div>`:"");
   const layerCl = v.clinical?.length ? `<article class="layer"><div class="lh"><span class="tag cl">Clinical evidence</span>${tc?`<span class="trust">trust ${tc}</span>`:""}</div><ul>${v.clinical.map(x=>`<li>${esc(x.t)}${cites(x.c)}</li>`).join("")}</ul></article>`:"";
-  const layerAy = v.ayurItems?.length ? `<article class="layer"><div class="lh"><span class="tag ay">Ayurvedic options</span>${ta?`<span class="trust">trust ${ta}</span>`:""}</div><div>${v.ayurItems.map(h=>`<div class="herb"><div><span class="hn">${esc(h.herb)}</span> <span class="sk">${esc(h.sk)}</span>${cites(h.c||v.ayurC)}</div><p>${esc(h.use)}</p><span class="ev ${h.ev}">${EV[h.ev]||""}</span>${h.caution?`<p style="color:var(--muted);font-size:12.5px;margin-top:6px"><b style="color:var(--warn)">Caution:</b> ${esc(h.caution)}</p>`:""}</div>`).join("")}</div></article>`:"";
+  const layerAy = v.ayurItems?.length ? `<article class="layer"><div class="lh"><span class="tag ay">Ayurvedic options</span>${ta?`<span class="trust">trust ${ta}</span>`:""}</div><div>${v.ayurItems.map(h=>`<div class="herb"><div><span class="hn">${esc(h.herb)}</span> <span class="sk">${esc(h.sk)}</span>${cites(h.c||v.ayurC)}</div><p>${esc(h.use)}</p><span class="ev ${h.ev}" title="${esc(h.evLabel||"")}">${EV[h.ev]||""}${h.evLabel&&!/^(limited|moderate|traditional|caution)$/i.test(h.evLabel.trim())?` · ${esc(h.evLabel)}`:""}</span>${h.caution?`<p style="color:var(--muted);font-size:12.5px;margin-top:6px"><b style="color:var(--warn)">Caution:</b> ${esc(h.caution)}</p>`:""}</div>`).join("")}</div></article>`:"";
   const layerCm = v.community?.length ? `<article class="layer"><div class="lh"><span class="tag cm">Community insight</span>${tm?`<span class="trust">trust ${tm}</span>`:""}</div><ul>${v.community.map(x=>`<li class="quote">${esc(x.t)}${cites(x.c)}<span class="who">${esc(x.who||"")}</span></li>`).join("")}</ul></article>`:"";
   const safety = v.safety?.length ? `<section class="safety"><h4>${icon("warn")} Safety and interactions</h4><ul>${v.safety.map(x=>`<li>${esc(x.t)}${cites(x.c)}</li>`).join("")}</ul></section>`:"";
   const flags = v.flags?.length ? `<section class="flags"><h4>${icon("flag")} See a doctor promptly if</h4><ul>${v.flags.map(f=>`<li>${esc(f)}</li>`).join("")}</ul></section>`:"";
   const present=[...new Set(S.map(s=>s.src))];
-  const cards = S.length ? `<div class="srch"><h4>Sources (${S.length})</h4><div class="filters" id="filters"><button type="button" class="f" aria-pressed="true" data-f="all">All</button>${ORDER.filter(k=>present.includes(k)).map(k=>`<button type="button" class="f" aria-pressed="false" data-f="${k}">${SOURCES[k].name}</button>`).join("")}</div></div><div class="cards" id="cards">${S.map(card).join("")}</div>`:"";
+  const ranked=S.filter(s=>s.rank), refs=S.filter(s=>!s.rank);
+  const keys=[...ORDER,"nih","community"].filter(k=>present.includes(k));
+  const head = ranked.length ? `Top ${ranked.length} ranked sources${R?` <span class="refs">of ${R.candidates} fetched</span>`:""}` : `Sources (${S.length})`;
+  const cards = S.length ? `<div class="srch"><h4>${head}</h4><div class="filters" id="filters"><button type="button" class="f" aria-pressed="true" data-f="all">All</button>${keys.map(k=>`<button type="button" class="f" aria-pressed="false" data-f="${k}">${SOURCES[k].name}</button>`).join("")}</div></div><div class="cards" id="cards">${(ranked.length?ranked:S).map(card).join("")}</div>${ranked.length&&refs.length?`<div class="srch"><h4 style="font-size:15px">Reference facts also cited</h4></div><div class="cards">${refs.map(card).join("")}</div>`:""}`:"";
   return `<div class="fade" style="display:flex;flex-direction:column;gap:16px">
     ${banner}
-    <div class="ahead"><h3>${esc(v.q)}</h3><div class="meta mono"><span>${S.length} items</span><span>${nSrc} sources</span><span>${secs}s</span><span>Llama 3.1 8B</span></div></div>
+    <div class="ahead"><h3>${esc(v.q)}</h3><div class="meta mono"><span>${S.length} items</span><span>${nSrc} sources</span><span>${secs}s</span><span>${esc(opt.model&&opt.model!=="mock"?opt.model:(opt.mode==="live"?"mock model (no GROQ_API_KEY)":"Llama 3.1 8B"))}</span></div></div>
     <div class="tldr"><div class="lbl">Answer</div><p>${esc(v.summary)}</p></div>
     ${(layerCl||layerAy||layerCm)?`<div class="layers">${layerCl}${layerAy}${layerCm}</div>`:""}
     ${(safety||flags)?`<div class="two">${safety||"<div></div>"}${flags}</div>`:""}
@@ -673,12 +749,16 @@ function renderAnswer(v, secs, opt){
 }
 function card(s){
   const m=SOURCES[s.src]||SOURCES.pubmed;
-  return `<article class="card" id="src-${s.id}" data-src="${s.src}">
-    <div class="ch"><div class="logo lg-${s.src}">${m.logo}</div><div style="min-width:0"><div class="s">${m.name}</div><div class="k">${esc(s.meta)}</div></div><span class="n">[${s.id}]</span></div>
+  const t=Number.isFinite(+s.trust)&&s.trust!==null?+s.trust:null;
+  const sc=s.score?["relevance","trust","credibility","recency","engagement"].map(k=>`<span>${k}</span><span class="bar"><i style="width:${Math.round(100*(s.score[k]||0))}%;background:var(--primary)"></i></span><span>${(s.score[k]||0).toFixed(2)}</span>`).join(""):"";
+  return `<article class="card" id="src-${esc(s.id)}" data-src="${esc(s.src)}">
+    <div class="ch">${s.rank?`<span class="rk" title="Rank by overall score">#${s.rank}</span>`:""}<div class="logo lg-${esc(s.src)}">${m.logo}</div><div style="min-width:0"><div class="s">${m.name}</div><div class="k">${esc(s.meta)}</div></div><span class="n">[${esc(s.id)}]</span></div>
     <div class="t">${esc(s.title)}</div>
     <div class="x">${esc(s.snippet)}</div>
-    <div class="cf"><span class="tier ${m.tier}">${m.tierLbl}${s.live?" · live":""}</span><span class="meter" title="Trust score">trust<span class="bar"><i style="width:${s.trust}%;background:${trustColor(s.trust)}"></i></span>${s.trust}</span></div>
-    <a href="${esc(s.url)}" target="_blank" rel="noopener">Open source ↗</a>
+    ${s.why?`<div class="why">Why ranked: ${esc(s.why)}</div>`:""}
+    ${sc?`<details><summary class="refs" style="cursor:pointer">Score ${s.score.total.toFixed(2)} breakdown</summary><div class="sb" style="margin-top:6px">${sc}</div></details>`:""}
+    <div class="cf"><span class="tier ${m.tier}">${m.tierLbl}${s.live?" · live":""}</span>${t!==null?`<span class="meter" title="Trust score">trust<span class="bar"><i style="width:${t}%;background:${trustColor(t)}"></i></span>${t}</span>`:""}</div>
+    ${s.url?`<a href="${esc(s.url)}" target="_blank" rel="noopener">Open source ↗</a>`:""}
   </article>`;
 }
 function crisisCard(kind){
@@ -713,14 +793,25 @@ $("#answer").addEventListener("click", e=>{
 const dlg=$("#settings");
 $("#openSettings").addEventListener("click",()=>{ $("#apiBase").value=cfg.api; $("#liveSrc").checked=cfg.live; try{dlg.showModal()}catch(e){dlg.setAttribute("open","")} });
 $("#saveSettings").addEventListener("click",()=>{ cfg.api=$("#apiBase").value.trim(); cfg.live=$("#liveSrc").checked; store.set("vp_api",cfg.api); store.set("vp_live",cfg.live?"1":"0"); setMode(); dlg.close(); toast(cfg.api?"Backend connected. New questions go to Llama 3.1 8B.":"Settings saved."); });
-$("#clearSettings").addEventListener("click",()=>{ cfg={api:"",live:false}; store.set("vp_api",""); store.set("vp_live","0"); setMode(); dlg.close(); toast("Using curated sample answers."); });
+$("#clearSettings").addEventListener("click",()=>{ cfg={api:"",live:false}; sessionId=null; store.set("vp_api",""); store.set("vp_live","0"); setMode(); dlg.close(); toast("Using curated sample answers."); });
 
-/* ---------- Boot: open on a realistic answer ---------- */
+/* ---------- Boot ---------- */
 renderRail(); renderChips(); setMode();
-const first=DEMO[0];
-ORDER.forEach(k=>setStatus(k,"done",`${first.counts[k]} hits`)); setStatus("llm","done","done");
-$("#q").value=first.q;
-$("#answer").innerHTML = renderAnswer({...first}, (first.ms/1000).toFixed(1), {mode:"demo"});
+function bootDemo(){
+  const first=DEMO[0];
+  ORDER.forEach(k=>setStatus(k,"done",`${first.counts[k]} hits`)); setStatus("llm","done","done");
+  $("#q").value=first.q;
+  $("#answer").innerHTML = renderAnswer({...first}, (first.ms/1000).toFixed(1), {mode:"demo"});
+}
+function bootLive(){
+  $("#answer").innerHTML = `<div class="banner fade"><b>Live.</b> Connected to the backend. Ask anything: every question is fetched live from six sources, ranked, and answered by ${"Llama 3.1 8B"}.</div>`;
+  $("#q").focus();
+}
+if(cfg.api){ bootLive(); }
+else detectBackend().then(ok=>{
+  if(ok){ cfg.api=location.origin; setMode(); bootLive(); }
+  else bootDemo();
+});
 })();
 </script>
 

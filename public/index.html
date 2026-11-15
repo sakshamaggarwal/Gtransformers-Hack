@@ -1,0 +1,819 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Vaidya Pulse</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: two-pane health console. Left rail = live source pipeline, right = question + layered answer (clinical / ayurvedic / community) with cited source cards. */
+:root{
+  --bg:#F3F6F5; --surface:#FFFFFF; --surface-2:#EAF0EE; --ink:#10231F; --muted:#566763; --line:#D9E2DF;
+  --primary:#0E6B5C; --primary-ink:#FFFFFF; --primary-soft:#DCEFEA;
+  --ayur:#9A6512; --ayur-soft:#F7ECD8;
+  --comm:#4352C9; --comm-soft:#E4E7FB;
+  --danger:#B93A25; --danger-soft:#FBE5E0;
+  --warn:#9C5D00; --warn-soft:#FBF0DC;
+  --ok:#2A7A50;
+  --shadow:0 1px 2px rgba(16,35,31,.06),0 8px 24px rgba(16,35,31,.06);
+  --f-display:"Bricolage Grotesque","Figtree",system-ui,sans-serif;
+  --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0B1412; --surface:#12201C; --surface-2:#182A25; --ink:#E4EDEA; --muted:#93A6A0; --line:#243530;
+  --primary:#3CBFA4; --primary-ink:#06241E; --primary-soft:#173A33;
+  --ayur:#E4AB4E; --ayur-soft:#33270F; --comm:#929CF6; --comm-soft:#1F2547;
+  --danger:#F07A61; --danger-soft:#3A1C16; --warn:#E8A646; --warn-soft:#352610; --ok:#5CC48C;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B1412; --surface:#12201C; --surface-2:#182A25; --ink:#E4EDEA; --muted:#93A6A0; --line:#243530;
+  --primary:#3CBFA4; --primary-ink:#06241E; --primary-soft:#173A33;
+  --ayur:#E4AB4E; --ayur-soft:#33270F; --comm:#929CF6; --comm-soft:#1F2547;
+  --danger:#F07A61; --danger-soft:#3A1C16; --warn:#E8A646; --warn-soft:#352610; --ok:#5CC48C;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+a{color:var(--primary)}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--f-mono);font-size:12px;letter-spacing:.01em}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+
+/* Top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:12px}
+.mark{width:38px;height:38px;border-radius:11px;background:var(--primary);display:grid;place-items:center;flex:none}
+.mark svg{width:22px;height:22px}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:-.01em;margin:0;line-height:1.1}
+.brand p{margin:0;color:var(--muted);font-size:13px}
+.top-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:12.5px;font-weight:500;white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}
+.dot.on{background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+.btn-ghost{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer}
+.btn-ghost:hover{border-color:var(--primary);color:var(--primary)}
+
+.grid{display:grid;grid-template-columns:290px minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}.rail{order:2}}
+
+/* Rail */
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);display:flex;flex-direction:column;gap:14px}
+@media (max-width:900px){.rail{position:static}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.panel h2{font-family:var(--f-display);font-size:14px;font-weight:600;margin:0 0 4px;letter-spacing:.01em}
+.panel .sub{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+.srclist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.srcrow{display:grid;grid-template-columns:30px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 6px;border-radius:10px;transition:background .2s}
+.srcrow.active{background:var(--surface-2)}
+.srcrow .nm{font-weight:600;font-size:13.5px;line-height:1.2}
+.srcrow .ds{color:var(--muted);font-size:11.5px;line-height:1.3}
+.status{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:right;min-width:54px}
+.status.done{color:var(--ok)}
+.status.run{color:var(--primary)}
+.status.fail{color:var(--warn)}
+.spin{display:inline-block;width:10px;height:10px;border:1.5px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.logo{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-family:var(--f-mono);font-weight:500;font-size:11px;flex:none}
+.lg-pubmed{background:#DCE8F7;color:#1D4E89}
+.lg-reddit{background:#FDE3D6;color:#B23C0A}
+.lg-openfda{background:#E3E7F0;color:#2B3A67}
+.lg-ctgov{background:#DDF0EC;color:#0F6150}
+.lg-hse{background:#FCEBD5;color:#93540D}
+.lg-ayur{background:#F7ECD8;color:#8A5A0E}
+.lg-llm{background:var(--primary-soft);color:var(--primary)}
+.lg-nih{background:#E1ECF7;color:#20558A}
+.lg-community{background:var(--comm-soft);color:var(--comm)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .logo:not(.lg-llm){filter:saturate(.9) brightness(.92)}}
+.model{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;background:var(--surface-2);margin-top:10px}
+.model b{font-size:13px;display:block}
+.model span{font-size:11.5px;color:var(--muted)}
+.legend{display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+.legend div{display:flex;gap:8px;align-items:center}
+
+/* Ask */
+.ask{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+.ask h2{font-family:var(--f-display);font-size:clamp(24px,3.2vw,34px);line-height:1.12;margin:0 0 6px;letter-spacing:-.015em;font-weight:700;text-wrap:balance}
+.ask h2 em{font-style:normal;color:var(--ayur)}
+.ask p.lead{color:var(--muted);margin:0 0 16px;max-width:62ch}
+form.q{display:flex;gap:8px;align-items:stretch;background:var(--bg);border:1.5px solid var(--line);border-radius:14px;padding:6px;transition:border-color .2s}
+form.q:focus-within{border-color:var(--primary)}
+form.q input{flex:1;min-width:0;border:0;background:transparent;padding:10px 10px;font-size:16px;outline:none}
+.go{border:0;background:var(--primary);color:var(--primary-ink);border-radius:10px;padding:0 18px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.go:hover{filter:brightness(1.07)}
+.go:disabled{opacity:.6;cursor:progress}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;text-align:left}
+.chip:hover{border-color:var(--primary);color:var(--primary)}
+.chip.safety{border-style:dashed;color:var(--danger)}
+
+/* Answer */
+#answer{margin-top:22px;display:flex;flex-direction:column;gap:16px}
+.fade{animation:fd .45s ease both}
+@keyframes fd{from{opacity:.001;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.fade,.spin{animation:none}}
+.ahead{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.ahead h3{font-family:var(--f-display);font-size:22px;margin:0;line-height:1.2;letter-spacing:-.01em;text-wrap:balance}
+.meta{color:var(--muted);font-size:12.5px;display:flex;gap:10px;flex-wrap:wrap}
+.tldr{background:var(--primary-soft);border-radius:14px;padding:16px 18px}
+.tldr .lbl{font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--primary);font-weight:500}
+.tldr p{margin:6px 0 0;font-size:16px;line-height:1.55;max-width:75ch}
+.layers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:1100px){.layers{grid-template-columns:minmax(0,1fr)}}
+.layer{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;min-width:0}
+.lh{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:500;padding:4px 8px;border-radius:6px}
+.tag.cl{background:var(--primary-soft);color:var(--primary)}
+.tag.ay{background:var(--ayur-soft);color:var(--ayur)}
+.tag.cm{background:var(--comm-soft);color:var(--comm)}
+.trust{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.layer ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:10px}
+.layer li{font-size:14px;line-height:1.5}
+.cite{font-family:var(--f-mono);font-size:10.5px;vertical-align:super;line-height:0;margin-left:2px;text-decoration:none;color:var(--muted);padding:0 2px;border-radius:3px;cursor:pointer;border:0;background:none}
+.cite:hover{color:var(--primary);background:var(--primary-soft)}
+.herb{border-top:1px solid var(--line);padding-top:10px}
+.herb:first-child{border-top:0;padding-top:0}
+.herb .hn{font-weight:700;font-size:14.5px}
+.herb .sk{color:var(--muted);font-style:italic;font-size:13px}
+.herb p{margin:3px 0 0;font-size:13.5px}
+.ev{display:inline-block;font-family:var(--f-mono);font-size:10.5px;padding:2px 6px;border-radius:5px;margin-top:6px;margin-right:4px}
+.ev.t{background:var(--surface-2);color:var(--muted)}
+.ev.l{background:var(--ayur-soft);color:var(--ayur)}
+.ev.m{background:var(--primary-soft);color:var(--primary)}
+.ev.c{background:var(--danger-soft);color:var(--danger)}
+.quote{border-left:2px solid var(--comm);padding-left:10px;color:var(--ink)}
+.quote .who{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+
+.safety{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);border-radius:14px;padding:16px 18px}
+.safety h4,.flags h4{margin:0 0 8px;font-size:14px;display:flex;align-items:center;gap:8px;font-family:var(--f-display)}
+.safety h4{color:var(--warn)}
+.safety ul,.flags ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.two{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px}
+@media (max-width:760px){.two{grid-template-columns:minmax(0,1fr)}}
+.flags{background:var(--danger-soft);border-radius:14px;padding:16px 18px}
+.flags h4{color:var(--danger)}
+
+.srch{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:6px}
+.srch h4{font-family:var(--f-display);font-size:17px;margin:0}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.f{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:12px;cursor:pointer}
+.f[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0;transition:border-color .2s,box-shadow .2s}
+.card.hl{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.ch{display:flex;gap:10px;align-items:center}
+.ch .n{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-left:auto}
+.ch .s{font-weight:600;font-size:13px;line-height:1.2}
+.ch .k{font-size:11.5px;color:var(--muted)}
+.card .t{font-weight:600;font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+.card .x{font-size:13px;color:var(--muted);line-height:1.45;overflow-wrap:anywhere}
+.cf{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:6px;border-top:1px dashed var(--line)}
+.meter{display:flex;align-items:center;gap:6px;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.bar{width:54px;height:5px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px}
+.tier{font-size:11px;font-weight:600;padding:2px 7px;border-radius:5px}
+.tier.peer{background:var(--primary-soft);color:var(--primary)}
+.tier.reg{background:#E3E7F0;color:#2B3A67}
+.tier.mod{background:var(--ayur-soft);color:var(--ayur)}
+.tier.com{background:var(--comm-soft);color:var(--comm)}
+.tier.trad{background:var(--ayur-soft);color:var(--ayur)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tier.reg{background:#222A40;color:#AFC0F0}}
+:root[data-theme="dark"] .tier.reg{background:#222A40;color:#AFC0F0}
+.card .rk{font-family:var(--f-mono);font-size:11px;font-weight:600;background:var(--ink);color:var(--bg);border-radius:6px;padding:2px 6px;flex:none}
+.card .why{font-size:12px;color:var(--primary);line-height:1.35}
+.sb{display:grid;grid-template-columns:auto 1fr auto;gap:2px 8px;align-items:center;font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+.sb .bar{width:100%}
+.refs{font-size:12.5px;color:var(--muted)}
+.errcard{background:var(--danger-soft);border:1px solid var(--danger);border-radius:14px;padding:16px 18px;font-size:14px}
+.errcard h4{margin:0 0 6px;color:var(--danger);font-family:var(--f-display)}
+.errcard code{font-family:var(--f-mono);font-size:12.5px;background:var(--surface);padding:1px 5px;border-radius:5px}
+.card a{font-size:12px;font-weight:600;text-decoration:none}
+.card a:hover{text-decoration:underline}
+
+.crisis{background:var(--danger-soft);border:1.5px solid var(--danger);border-radius:16px;padding:20px}
+.crisis h3{color:var(--danger);font-family:var(--f-display);margin:0 0 8px;font-size:21px}
+.crisis .lines{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:12px}
+.crisis .line{background:var(--surface);border-radius:10px;padding:12px}
+.crisis .line b{display:block;font-size:20px;font-family:var(--f-mono);font-weight:500;user-select:all}
+.crisis .line span{font-size:12.5px;color:var(--muted)}
+
+.disc{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;display:flex;gap:8px;align-items:flex-start}
+.banner{font-size:12.5px;background:var(--surface-2);border-radius:10px;padding:8px 12px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.banner b{color:var(--ink)}
+
+/* Empty / thinking */
+.thinking{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;gap:12px;align-items:center;color:var(--muted)}
+.skel{height:12px;border-radius:6px;background:linear-gradient(90deg,var(--surface-2),var(--line),var(--surface-2));background-size:200% 100%;animation:sk 1.2s linear infinite}
+@keyframes sk{to{background-position:-200% 0}}
+
+/* Settings drawer */
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);max-width:560px;width:calc(100% - 32px);padding:20px}
+dialog::backdrop{background:rgba(8,20,17,.45)}
+dialog h3{font-family:var(--f-display);margin:0 0 6px}
+dialog label{display:block;font-weight:600;font-size:13px;margin:14px 0 6px}
+dialog input[type=text]{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 10px}
+dialog pre{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;overflow-x:auto;font-family:var(--f-mono);font-size:11.5px;line-height:1.5;margin:8px 0 0}
+dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.btn{border:0;background:var(--primary);color:var(--primary-ink);border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13.5px;margin-top:10px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 14px;border-radius:10px;font-size:13px;z-index:50;max-width:calc(100% - 32px)}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-5 4 10 2-5h6"/></svg>
+      </div>
+      <div>
+        <h1>Vaidya Pulse</h1>
+        <p>Community health intelligence: research, regulators, Ayurveda and real people, cited.</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <span class="pill" id="modePill"><span class="dot" id="modeDot"></span><span id="modeTxt">Demo mode</span></span>
+      <span class="pill"><span class="logo lg-llm" style="width:18px;height:18px;border-radius:5px;font-size:9px">L3</span>Llama 3.1 8B · Groq</span>
+      <button class="btn-ghost" id="openSettings" type="button">Connect backend</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <aside class="rail">
+      <section class="panel" aria-labelledby="srcH">
+        <h2 id="srcH">Sources queried</h2>
+        <p class="sub">Each question fans out to six sources live, the results are ranked, and Llama 3.1 8B writes one cited answer from the top 10.</p>
+        <ul class="srclist" id="srcList"></ul>
+        <div class="model">
+          <div class="logo lg-llm">L3</div>
+          <div style="min-width:0;flex:1"><b>Llama 3.1 8B Instant</b><span>Synthesis via Groq · open weights</span></div>
+          <div class="status" id="st-llm">idle</div>
+        </div>
+      </section>
+      <section class="panel" aria-labelledby="trH">
+        <h2 id="trH">How we rank</h2>
+        <p class="sub">Every fetched item is scored on relevance (38%), trust (25%), author credibility (15%), recency (12%) and engagement (10%). The top 10 are kept, with at least one from each source that had a relevant hit and at most 3 per source.</p>
+        <div class="legend">
+          <div><span class="tier peer">Peer-reviewed</span> PubMed studies, weighted by study type</div>
+          <div><span class="tier reg">Regulator</span> FDA safety data and trial registries</div>
+          <div><span class="tier mod">Moderated</span> Stack Exchange answers, by score</div>
+          <div><span class="tier trad">Traditional</span> Ayurvedic texts and pharmacopoeia</div>
+          <div><span class="tier com">Community</span> Reddit, by upvotes and agreement</div>
+        </div>
+      </section>
+    </aside>
+
+    <main>
+      <section class="ask">
+        <h2>Ask about your health. Get research, safety data and <em>Ayurvedic</em> options in one answer.</h2>
+        <p class="lead">Try a question from a blood report or everyday symptoms. Answers combine clinical evidence, traditional Ayurvedic practice and what people in health communities actually report, with every claim linked to its source.</p>
+        <form class="q" id="qForm" autocomplete="off">
+          <label for="q" style="position:absolute;left:-9999px">Your health question</label>
+          <input id="q" name="q" type="text" placeholder="e.g. My blood report shows low RBC. How can I increase it?" maxlength="300">
+          <button class="go" id="go" type="submit">Ask
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+        <div class="chips" id="chips"></div>
+      </section>
+
+      <div id="answer" aria-live="polite"></div>
+    </main>
+  </div>
+</div>
+
+<dialog id="settings" aria-labelledby="setH">
+  <h3 id="setH">Connect the live backend</h3>
+  <p class="sub" style="color:var(--muted);margin:0;font-size:13.5px">When this page is served by the backend (<code>npm start</code> locally, or the Netlify site) it connects automatically. Otherwise, paste the backend URL. For every question the backend fetches PubMed, ClinicalTrials.gov, OpenFDA, Health Stack Exchange, Reddit and the Ayurvedic KB live, ranks everything, and sends the top 10 to Llama 3.1 8B on Groq.</p>
+  <label for="apiBase">Backend URL</label>
+  <input type="text" id="apiBase" placeholder="http://localhost:8888 or https://your-site.netlify.app">
+  <label class="toggle" for="liveSrc"><input type="checkbox" id="liveSrc"> Without a backend: fetch sources directly in the browser (unranked, no AI answer)</label>
+  <label>Response contract: POST /api/chat</label>
+  <pre>// request
+{ "message": "how can I increase my RBC count?", "session_id": "optional" }
+// response (excerpt)
+{ "summary": "...",
+  "clinical":  [{ "text": "...", "cites": ["P1","E1"] }],
+  "ayurvedic": [{ "herb": "Punarnava", "sanskrit": "Boerhavia diffusa", "use": "...",
+                  "evidence": "limited", "evidence_label": "limited", "caution": "...", "cites": ["A1"] }],
+  "community": [{ "text": "...", "who": "Reddit r/Anemia · heme_doc · 150 upvotes", "cites": ["R1"] }],
+  "safety":    [{ "text": "...", "cites": ["F1"] }],
+  "redFlags":  ["..."],
+  "sources":   [{ "id": "P1", "src": "pubmed", "rank": 1, "title": "...", "snippet": "...", "meta": "...",
+                  "url": "...", "trust": 94, "why": "randomized controlled trial · recent",
+                  "score": { "total": 0.73, "relevance": 0.61, "trust": 0.95, "recency": 0.65,
+                             "engagement": 0.5, "credibility": 0.9 } }],
+  "ranking":   { "candidates": 42, "kept": 10, "per_source": { "pubmed": { "fetched": 8, "kept": 3 } } },
+  "crisis": false }</pre>
+  <div class="row">
+    <button class="btn-ghost" type="button" id="clearSettings">Use samples</button>
+    <button class="btn" type="button" id="saveSettings">Save</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+/* ---------- Source registry ---------- */
+const SOURCES = {
+  pubmed:  {name:"PubMed", desc:"Peer-reviewed research", logo:"PM", tier:"peer", tierLbl:"Peer-reviewed"},
+  ctgov:   {name:"ClinicalTrials.gov", desc:"Active and completed trials", logo:"CT", tier:"reg", tierLbl:"Registry"},
+  openfda: {name:"OpenFDA", desc:"Adverse events, recalls, labels", logo:"FDA", tier:"reg", tierLbl:"Regulator"},
+  ayur:    {name:"Ayurvedic herb KB", desc:"Local herb knowledge base", logo:"AY", tier:"trad", tierLbl:"Traditional"},
+  hse:     {name:"Health Stack Exchange", desc:"Moderated Q&A", logo:"SE", tier:"mod", tierLbl:"Moderated"},
+  reddit:  {name:"Reddit", desc:"Community discussions", logo:"R/", tier:"com", tierLbl:"Community"},
+  nih:     {name:"Clinical reference", desc:"NIH ODS, NHLBI, AHA fact sheets", logo:"NIH", tier:"reg", tierLbl:"Reference"},
+  community:{name:"Community sample", desc:"Bundled demo comment (synthetic)", logo:"CM", tier:"com", tierLbl:"Demo sample"},
+};
+// backend ranking buckets -> rail rows
+const BUCKET = {pubmed:"pubmed", trial:"ctgov", fda:"openfda", ayurveda:"ayur", hse:"hse", reddit:"reddit"};
+const ORDER = ["pubmed","ctgov","openfda","ayur","hse","reddit"];
+const enc = encodeURIComponent;
+const pm = q => `https://pubmed.ncbi.nlm.nih.gov/?term=${enc(q)}`;
+const ct = q => `https://clinicaltrials.gov/search?term=${enc(q)}`;
+const se = q => `https://health.stackexchange.com/search?q=${enc(q)}`;
+const rd = (sub,q) => `https://www.reddit.com/r/${sub}/search/?q=${enc(q)}&restrict_sr=1`;
+const fdaDrug = n => `https://api.fda.gov/drug/event.json?search=patient.drug.openfda.generic_name:%22${enc(n)}%22&count=patient.reaction.reactionmeddrapt.exact&limit=10`;
+const fdaFood = n => `https://api.fda.gov/food/event.json?search=products.name_brand:%22${enc(n)}%22&count=reactions.exact&limit=10`;
+
+/* ---------- Ayurvedic herb knowledge base (local, offline) ---------- */
+const HERBS = [
+  {k:["rbc","anemi","anaemi","hemoglobin","haemoglobin","iron","ferritin","blood count","pale","pandu"], herb:"Punarnava", sk:"Boerhavia diffusa", use:"Classical herb for Pandu (anemia) and fluid retention; often paired with iron preparations.", ev:"l", caution:"Mild diuretic. Check with a doctor if you take blood pressure or kidney medicines."},
+  {k:["rbc","anemi","anaemi","hemoglobin","haemoglobin","iron","pandu"], herb:"Mandur Bhasma", sk:"Processed iron oxide", use:"Traditional iron preparation used for Pandu. Small Indian trials report hemoglobin gains similar to oral iron.", ev:"l", caution:"Buy only AYUSH-licensed, lab-tested brands. Some bhasma products sold online have tested positive for lead or mercury."},
+  {k:["rbc","anemi","hemoglobin","iron","vitamin c","immun","digest","amla"], herb:"Amalaki (Amla)", sk:"Phyllanthus emblica", use:"Rich in vitamin C, which improves absorption of plant iron when eaten with meals.", ev:"m", caution:"Generally safe as food. May add to the effect of blood thinners in high doses."},
+  {k:["rbc","anemi","hemoglobin","iron","moringa"], herb:"Shigru (Moringa leaf)", sk:"Moringa oleifera", use:"Leaf powder is a dense food source of iron, folate and protein.", ev:"l", caution:"Avoid root and bark in pregnancy. Leaf in food amounts is considered safe."},
+  {k:["blood pressure","hypertension","bp","heart","cholesterol","arjuna"], herb:"Arjuna", sk:"Terminalia arjuna", use:"Bark used as a heart tonic. Small trials show modest drops in blood pressure and improved exercise tolerance.", ev:"l", caution:"May add to the effect of BP medicines. Tell your doctor before combining."},
+  {k:["blood pressure","hypertension","bp","garlic","cholesterol"], herb:"Lasuna (Garlic)", sk:"Allium sativum", use:"Meta-analyses of aged garlic extract show systolic BP drops of about 8 mmHg in people with high BP.", ev:"m", caution:"Raises bleeding risk with warfarin, aspirin and other blood thinners. Stop 1 week before surgery."},
+  {k:["blood pressure","hypertension","bp","sarpagandha"], herb:"Sarpagandha", sk:"Rauwolfia serpentina", use:"The plant reserpine was isolated from. It does lower BP, which is why it needs a prescriber.", ev:"c", caution:"Not a self-care herb. Can cause depression, low heart rate and nasal congestion. Use only under medical supervision."},
+  {k:["blood pressure","hypertension","bp","stress","anxiety","sleep","thyroid","ashwagandha","energy","fatigue"], herb:"Ashwagandha", sk:"Withania somnifera", use:"Adaptogen for stress and sleep. Trials show lower cortisol and perceived stress over 8 weeks.", ev:"m", caution:"Rare liver injury reported. Can raise thyroid hormone levels. Avoid in pregnancy and with thyroid medicine unless supervised."},
+  {k:["digest","bloat","gas","constipat","stomach","gut","ibs","acidity","triphala","indigestion"], herb:"Triphala", sk:"Amalaki + Bibhitaki + Haritaki", use:"Classical three-fruit blend for regular bowel movements and gut comfort. Small trials support a mild laxative effect.", ev:"l", caution:"Can cause loose stools. Avoid in pregnancy and with diarrhea."},
+  {k:["digest","bloat","gas","nausea","stomach","indigestion","ginger"], herb:"Shunthi (Dry ginger)", sk:"Zingiber officinale", use:"Speeds stomach emptying and eases nausea. One of the better-studied digestive herbs.", ev:"m", caution:"High doses may cause heartburn. Use care with blood thinners."},
+  {k:["digest","bloat","gas","indigestion","ajwain","acidity"], herb:"Ajwain + Jeera water", sk:"Trachyspermum ammi, Cuminum cyminum", use:"Household remedy for gas and bloating after meals; cumin showed IBS symptom relief in a small trial.", ev:"t", caution:"Food-level amounts are safe. Concentrated oils are not."},
+  {k:["thyroid","hypothyroid","tsh","levothyroxine"], herb:"Kanchanar Guggulu", sk:"Bauhinia variegata + Commiphora", use:"Traditional formula used for thyroid swellings and goiter.", ev:"t", caution:"Guggul may change how thyroid and other medicines work. Use only with your doctor's knowledge."},
+];
+
+/* ---------- Curated demo answers ---------- */
+const DEMO = [
+ {
+  id:"rbc", match:["rbc","red blood","anemi","anaemi","hemoglobin","haemoglobin","iron","ferritin","blood count"],
+  q:"My blood report shows low RBC. How can I increase it?",
+  counts:{pubmed:38,ctgov:12,openfda:6,ayur:4,hse:5,reddit:41}, ms:2380,
+  summary:"Low RBC is most often caused by iron, B12 or folate deficiency, so the first step is finding out which one with a ferritin, B12 and folate test. If it is iron, oral iron taken every other day with vitamin C is well supported. Ayurveda adds Punarnava, licensed Mandur Bhasma and iron-rich foods like moringa and amla, and community members mostly share tips on handling the side effects of iron.",
+  clinical:[
+    {t:"Ask your doctor for ferritin, vitamin B12 and folate. Iron deficiency is the most common cause of low RBC worldwide, but the treatment depends on the cause.", c:[1]},
+    {t:"Oral iron taken on alternate days was absorbed better than daily doses in randomized studies, with fewer stomach side effects.", c:[2]},
+    {t:"Take iron with vitamin C (orange, amla) and away from tea, coffee, calcium and antacids, which block absorption.", c:[1,9]},
+    {t:"Hemoglobin usually rises about 1 g/dL within 2 to 4 weeks once iron works. If it does not, IV iron is an option your doctor can consider.", c:[3]},
+  ],
+  ayur:["Punarnava","Mandur Bhasma","Amalaki (Amla)","Shigru (Moringa leaf)"], ayurC:[5,6],
+  community:[
+    {t:"Switching from ferrous sulfate to iron bisglycinate stopped my constipation and my ferritin still went from 9 to 48 in four months.", who:"r/Anemic · 412 upvotes", c:[7]},
+    {t:"Tea with meals was the hidden problem for many members. Moving tea one to two hours away from food helped their numbers.", who:"Health Stack Exchange · accepted answer, score 37", c:[9]},
+    {t:"Several people only improved after IV iron because of absorption problems such as celiac disease. Ask about it if pills fail.", who:"r/AskDocs · verified physician reply", c:[8]},
+  ],
+  safety:[
+    {t:"Top FDA-reported reactions to ferrous sulfate are constipation, nausea, abdominal pain and dark stools. Dark stools are expected; black tarry stools with weakness are not.", c:[4]},
+    {t:"Iron overdose is a leading cause of fatal poisoning in children under 6. Keep iron tablets locked away.", c:[4]},
+    {t:"Do not combine Mandur Bhasma with iron tablets without a doctor. Double iron can cause overload.", c:[6]},
+  ],
+  flags:["Shortness of breath at rest, chest pain or fainting","Black tarry stools or vomiting blood","Hemoglobin below 8 g/dL on your report","Heavy menstrual bleeding or unexplained weight loss"],
+  sources:[
+    {id:1, src:"pubmed", title:"Iron deficiency anaemia: diagnosis and management review", snippet:"Ferritin is the most useful single test; treatment should target the underlying cause alongside iron replacement.", meta:"Review article · 2021", url:pm("iron deficiency anaemia review diagnosis management"), trust:92},
+    {id:2, src:"pubmed", title:"Alternate-day vs consecutive-day oral iron supplementation", snippet:"Alternate-day dosing increased fractional iron absorption in iron-depleted women (randomized trials).", meta:"RCT · Lancet Haematology 2017", url:pm("alternate day iron supplementation absorption"), trust:94},
+    {id:3, src:"ctgov", title:"IV ferric carboxymaltose vs oral iron in iron deficiency anemia", snippet:"Completed trial comparing hemoglobin response at 12 weeks.", meta:"Phase 4 · Completed", url:ct("iron deficiency anemia intravenous iron"), trust:88},
+    {id:4, src:"openfda", title:"Ferrous sulfate: adverse event reports", snippet:"Most reported reactions: constipation, nausea, abdominal pain, vomiting, faeces discoloured.", meta:"FAERS · live count query", url:fdaDrug("FERROUS SULFATE"), trust:85},
+    {id:5, src:"ayur", title:"Punarnava and Amalaki for Pandu (anemia)", snippet:"Charaka Samhita, Chikitsa Sthana 16: Pandu Roga chikitsa. Cross-referenced with modern phytochemistry.", meta:"Classical text · API of India", url:pm("Boerhavia diffusa anemia"), trust:64},
+    {id:6, src:"ayur", title:"Mandur Bhasma in iron deficiency anemia", snippet:"Small open-label studies report hemoglobin improvement; quality control of heavy metals is essential.", meta:"Clinical study · AYU journal", url:pm("Mandur bhasma iron deficiency anemia"), trust:61},
+    {id:7, src:"reddit", title:"Iron bisglycinate vs ferrous sulfate: my results", snippet:"Ferritin 9 → 48 in four months with bisglycinate every other day, no constipation.", meta:"r/Anemic · 412 upvotes · 86 comments", url:rd("Anemic","bisglycinate"), trust:48},
+    {id:8, src:"reddit", title:"Oral iron isn't raising my hemoglobin. What next?", snippet:"Physician-flaired reply: check for celiac and ongoing blood loss; IV iron is reasonable.", meta:"r/AskDocs · 233 upvotes · flaired physician", url:rd("AskDocs","oral iron not working"), trust:58},
+    {id:9, src:"hse", title:"Does tea really block iron absorption?", snippet:"Tannins form complexes with non-heme iron; effect is largest when tea is taken with the meal.", meta:"Accepted answer · score 37", url:se("tea iron absorption"), trust:74},
+  ]
+ },
+ {
+  id:"bp", match:["blood pressure","hypertension","bp ","high bp","bp?","systolic"],
+  q:"Natural ways to lower high blood pressure",
+  counts:{pubmed:52,ctgov:19,openfda:9,ayur:4,hse:7,reddit:33}, ms:2510,
+  summary:"Lifestyle changes lower blood pressure about as much as one medicine: the DASH diet, cutting salt below about 1,500 to 2,300 mg a day, and 150 minutes of weekly exercise each lower systolic pressure by roughly 5 to 11 mmHg. Garlic extract and Arjuna have the best Ayurvedic evidence, while Sarpagandha works but is a prescription-strength herb. Never stop a prescribed BP medicine on your own.",
+  clinical:[
+    {t:"The DASH eating plan lowered systolic BP by about 11 mmHg in people with hypertension in the original trial.", c:[1]},
+    {t:"Cutting sodium and adding potassium (vegetables, beans, bananas) add to the effect of DASH.", c:[1]},
+    {t:"150 minutes a week of moderate aerobic exercise lowers systolic BP by about 5 to 8 mmHg.", c:[2]},
+    {t:"Home monitoring twice daily for a week gives your doctor a more reliable picture than one clinic reading.", c:[8]},
+  ],
+  ayur:["Lasuna (Garlic)","Arjuna","Ashwagandha","Sarpagandha"], ayurC:[5],
+  community:[
+    {t:"Hibiscus tea, two cups a day, is the most mentioned home remedy. Several members logged 5 to 10 point drops on home cuffs.", who:"r/hypertension · 288 upvotes", c:[7]},
+    {t:"Cutting restaurant food and packaged snacks mattered more than the salt shaker for most people.", who:"Health Stack Exchange · score 22", c:[9]},
+  ],
+  safety:[
+    {t:"Garlic supplements raise bleeding risk with warfarin, aspirin and clopidogrel.", c:[4]},
+    {t:"Licorice (Yashtimadhu), common in Ayurvedic blends, raises blood pressure and lowers potassium. Check labels.", c:[4]},
+    {t:"Sarpagandha contains reserpine, which can cause depression and a slow heart rate. Use only under a doctor.", c:[5]},
+  ],
+  flags:["Reading above 180/120 mmHg","Severe headache, chest pain, vision changes or confusion","Weakness or numbness on one side of the body"],
+  sources:[
+    {id:1, src:"pubmed", title:"Dietary Approaches to Stop Hypertension (DASH) trial", snippet:"DASH diet reduced systolic BP by 11.4 mmHg in hypertensive participants.", meta:"RCT · NEJM", url:pm("DASH diet blood pressure trial"), trust:96},
+    {id:2, src:"pubmed", title:"Exercise training and blood pressure: meta-analysis", snippet:"Aerobic, dynamic resistance and isometric exercise all reduce resting BP.", meta:"Meta-analysis · BJSM", url:pm("exercise blood pressure meta-analysis"), trust:93},
+    {id:3, src:"ctgov", title:"Yoga and breathing for stage 1 hypertension", snippet:"Recruiting trial measuring 24-hour ambulatory BP after 12 weeks.", meta:"Recruiting · N=240", url:ct("yoga hypertension"), trust:80},
+    {id:4, src:"openfda", title:"Garlic and licorice: supplement adverse events", snippet:"CAERS reports include bleeding with anticoagulants (garlic) and hypokalemia (licorice).", meta:"CAERS · food/supplement events", url:fdaFood("GARLIC"), trust:82},
+    {id:5, src:"ayur", title:"Arjuna, Lasuna and Sarpagandha in Rakta Gata Vata", snippet:"Herb monographs with indications, doses and contraindications from the Ayurvedic Pharmacopoeia.", meta:"API of India · monographs", url:pm("Terminalia arjuna blood pressure"), trust:63},
+    {id:6, src:"pubmed", title:"Garlic extract for hypertension: meta-analysis", snippet:"Aged garlic extract lowered systolic BP by about 8 mmHg in hypertensive patients.", meta:"Meta-analysis · 2016", url:pm("garlic blood pressure meta-analysis"), trust:88},
+    {id:7, src:"reddit", title:"Hibiscus tea actually worked for me (logged for 6 weeks)", snippet:"Home-cuff log showing 138/88 → 129/82 with two cups daily plus walking.", meta:"r/hypertension · 288 upvotes", url:rd("hypertension","hibiscus tea"), trust:44},
+    {id:8, src:"hse", title:"How should I measure blood pressure at home?", snippet:"Seated, back supported, arm at heart level, two readings a minute apart, morning and evening.", meta:"Accepted answer · score 41", url:se("measure blood pressure at home"), trust:76},
+    {id:9, src:"hse", title:"Which matters more: salt shaker or processed food?", snippet:"About 70% of sodium in Western diets comes from packaged and restaurant food.", meta:"Answer · score 22", url:se("sodium processed food"), trust:70},
+  ]
+ },
+ {
+  id:"digest", match:["digest","bloat","gas","constipat","stomach","indigestion","acidity","ibs","gut"],
+  q:"Ayurvedic treatments for bloating and poor digestion",
+  counts:{pubmed:29,ctgov:8,openfda:4,ayur:4,hse:6,reddit:57}, ms:2140,
+  summary:"For everyday bloating, ginger, Triphala and cumin-ajwain water are the Ayurvedic options with at least some trial support, and ginger has the strongest evidence. Clinically, enteric-coated peppermint oil and a short low-FODMAP trial help most people with IBS-type bloating. See a doctor if bloating comes with weight loss, blood in stool or started after age 50.",
+  clinical:[
+    {t:"Enteric-coated peppermint oil improved IBS symptoms over placebo in several randomized trials.", c:[1]},
+    {t:"A 4 to 6 week low-FODMAP diet, ideally with a dietitian, reduces bloating in most people with IBS.", c:[2]},
+    {t:"Increase fiber slowly and drink more water; sudden fiber increases often make bloating worse at first.", c:[8]},
+  ],
+  ayur:["Shunthi (Dry ginger)","Triphala","Ajwain + Jeera water"], ayurC:[5],
+  community:[
+    {t:"Warm cumin-coriander-fennel (CCF) tea after dinner is the most repeated tip, with many saying it helped within a week.", who:"r/Ayurveda · 196 upvotes", c:[7]},
+    {t:"Eating slower and stopping at 80% full did more than any supplement for me.", who:"r/ibs · 341 upvotes", c:[6]},
+  ],
+  safety:[
+    {t:"Triphala can cause loose stools and cramping; start with a small dose at bedtime.", c:[4]},
+    {t:"Peppermint oil can worsen heartburn. Use enteric-coated capsules.", c:[4]},
+  ],
+  flags:["Unintended weight loss or blood in stool","New symptoms after age 50","Persistent vomiting or severe pain","Difficulty swallowing"],
+  sources:[
+    {id:1, src:"pubmed", title:"Peppermint oil for irritable bowel syndrome: meta-analysis", snippet:"Peppermint oil was superior to placebo for global IBS symptoms and abdominal pain.", meta:"Meta-analysis · 2019", url:pm("peppermint oil irritable bowel syndrome meta-analysis"), trust:91},
+    {id:2, src:"pubmed", title:"Low-FODMAP diet in IBS", snippet:"Reduced bloating and abdominal pain compared with habitual diet.", meta:"RCT · Gastroenterology", url:pm("low FODMAP diet bloating randomized"), trust:90},
+    {id:3, src:"ctgov", title:"Triphala for functional constipation", snippet:"Trial comparing Triphala with placebo on stool frequency over 8 weeks.", meta:"Completed · Phase 2", url:ct("triphala"), trust:78},
+    {id:4, src:"openfda", title:"Herbal digestive supplements: reported reactions", snippet:"Most frequent: diarrhoea, abdominal pain, nausea.", meta:"CAERS · food/supplement events", url:fdaFood("TRIPHALA"), trust:80},
+    {id:5, src:"ayur", title:"Agnimandya (weak digestion): Shunthi, Triphala, Ajwain", snippet:"Ashtanga Hridaya Sutrasthana 8; household remedies with doses.", meta:"Classical text · API of India", url:pm("ginger gastric emptying"), trust:62},
+    {id:6, src:"reddit", title:"What actually fixed my bloating", snippet:"Slow eating, smaller dinners and a walk after meals.", meta:"r/ibs · 341 upvotes", url:rd("ibs","bloating what helped"), trust:46},
+    {id:7, src:"reddit", title:"CCF tea after dinner: anyone else?", snippet:"Cumin, coriander, fennel seeds simmered 5 minutes.", meta:"r/Ayurveda · 196 upvotes", url:rd("Ayurveda","CCF tea"), trust:42},
+    {id:8, src:"hse", title:"Why does more fiber make me bloat?", snippet:"Gut bacteria ferment new fiber; increase gradually over 2 to 3 weeks.", meta:"Accepted answer · score 29", url:se("fiber bloating"), trust:73},
+  ]
+ },
+ {
+  id:"ashwa", match:["ashwagandha","thyroid","levothyroxine","hypothyroid","tsh"],
+  q:"Is ashwagandha safe if I take thyroid medicine?",
+  counts:{pubmed:21,ctgov:7,openfda:11,ayur:2,hse:3,reddit:64}, ms:2260,
+  summary:"Use caution. Ashwagandha can raise thyroid hormone levels, so combined with levothyroxine it may push you toward an overactive thyroid. It is usually well tolerated for stress, but rare liver injury has been reported and some European regulators have restricted it. If you want to try it, tell your doctor first and recheck TSH after 6 to 8 weeks.",
+  clinical:[
+    {t:"In an 8-week trial in subclinical hypothyroidism, ashwagandha raised T3 and T4 and lowered TSH compared with placebo.", c:[1]},
+    {t:"Case series describe ashwagandha-related liver injury, usually 2 to 12 weeks after starting, that resolved after stopping.", c:[2]},
+    {t:"If you combine them, recheck TSH after 6 to 8 weeks, since your thyroid dose may need adjusting.", c:[1,8]},
+  ],
+  ayur:["Ashwagandha","Kanchanar Guggulu"], ayurC:[5],
+  community:[
+    {t:"Several people on levothyroxine reported palpitations and anxiety after adding ashwagandha; their TSH came back suppressed.", who:"r/Hypothyroidism · 517 upvotes", c:[6]},
+    {t:"Others take it with their endocrinologist's knowledge and simply had their dose adjusted.", who:"r/Hashimotos · 203 upvotes", c:[7]},
+  ],
+  safety:[
+    {t:"FDA reports for ashwagandha include liver injury (jaundice, raised liver enzymes), palpitations and nausea.", c:[4]},
+    {t:"Stop and see a doctor if you notice yellow eyes or skin, dark urine, or a racing heartbeat.", c:[2,4]},
+    {t:"Avoid during pregnancy, and with sedatives or immunosuppressants unless supervised.", c:[5]},
+  ],
+  flags:["Yellow skin or eyes, dark urine","Racing heartbeat, tremor or weight loss","Severe fatigue with right upper belly pain"],
+  sources:[
+    {id:1, src:"pubmed", title:"Efficacy of ashwagandha in subclinical hypothyroid patients", snippet:"8-week double-blind RCT: significant improvement in TSH, T3 and T4 vs placebo.", meta:"RCT · J Altern Complement Med 2018", url:pm("ashwagandha subclinical hypothyroid randomized"), trust:86},
+    {id:2, src:"pubmed", title:"Ashwagandha-induced liver injury: case series", snippet:"Cholestatic or mixed liver injury; recovery after stopping.", meta:"Case series · LiverTox-referenced", url:pm("ashwagandha liver injury"), trust:84},
+    {id:3, src:"ctgov", title:"Withania somnifera for stress and sleep", snippet:"Completed trials measuring cortisol and sleep quality.", meta:"Completed · multiple", url:ct("ashwagandha"), trust:80},
+    {id:4, src:"openfda", title:"Ashwagandha: CAERS adverse event reports", snippet:"Reported reactions include hepatic injury, palpitations, nausea.", meta:"CAERS · food/supplement events", url:fdaFood("ASHWAGANDHA"), trust:83},
+    {id:5, src:"ayur", title:"Ashwagandha monograph", snippet:"Rasayana for Vata; contraindicated in pregnancy per classical guidance.", meta:"API of India · monograph", url:pm("Withania somnifera safety review"), trust:65},
+    {id:6, src:"reddit", title:"Ashwagandha + levo = hyper symptoms?", snippet:"Palpitations two weeks in; TSH dropped to 0.1.", meta:"r/Hypothyroidism · 517 upvotes", url:rd("Hypothyroidism","ashwagandha"), trust:47},
+    {id:7, src:"reddit", title:"Endo was fine with ashwagandha, adjusted my dose", snippet:"Rechecked labs at 6 weeks.", meta:"r/Hashimotos · 203 upvotes", url:rd("Hashimotos","ashwagandha"), trust:43},
+    {id:8, src:"hse", title:"Do herbal supplements interact with levothyroxine?", snippet:"Several do; separate dosing and recheck TSH.", meta:"Answer · score 18", url:se("levothyroxine supplement interaction"), trust:71},
+  ]
+ },
+];
+DEMO.forEach(d => { d.ayurItems = d.ayur.map(n => HERBS.find(h => h.herb === n)).filter(Boolean); });
+
+/* ---------- Crisis / safety screen (runs before anything else) ---------- */
+const CRISIS = [
+  {re:/\b(suicid|kill (my|him|her)self|end (it|my life)|want to die|self[- ]?harm|cut(ting)? myself|no reason to live)/i, kind:"self"},
+  {re:/\b(overdos|took (\d+|too many|a lot of|all (my|the)) (pills|tablets|iron|paracetamol|tylenol)|swallowed .*(pills|tablets)|poison(ed|ing)?)\b/i, kind:"poison"},
+  {re:/\b(chest pain|can'?t breathe|cannot breathe|stroke|face drooping|unconscious|severe bleeding|seizure)\b/i, kind:"emergency"},
+];
+function screen(q){ for (const c of CRISIS) if (c.re.test(q)) return c.kind; return null; }
+
+/* ---------- State ---------- */
+const $ = s => document.querySelector(s);
+const store = {get(k){try{return localStorage.getItem(k)}catch(e){return null}}, set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let cfg = {api: store.get("vp_api") || "", live: store.get("vp_live") === "1"};
+let busy = false;
+
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function toast(msg){const t=document.createElement("div");t.className="toast";t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
+const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+/* ---------- Rail ---------- */
+function renderRail(){
+  $("#srcList").innerHTML = ORDER.map(k=>{const s=SOURCES[k];return `<li class="srcrow" id="row-${k}"><div class="logo lg-${k}">${s.logo}</div><div style="min-width:0"><div class="nm">${s.name}</div><div class="ds">${s.desc}</div></div><div class="status" id="st-${k}">ready</div></li>`}).join("");
+}
+function setStatus(k, cls, html){const el=$("#st-"+k); if(!el) return; el.className="status "+(cls||""); el.innerHTML=html; const row=$("#row-"+k); if(row) row.classList.toggle("active", cls==="run");}
+function setMode(){
+  const live = !!cfg.api || cfg.live;
+  $("#modeDot").classList.toggle("on", live);
+  $("#modeTxt").textContent = cfg.api ? "Live backend" : (cfg.live ? "Live sources" : "Demo mode");
+}
+
+/* ---------- Chips ---------- */
+function renderChips(){
+  const chips = DEMO.map(d=>`<button type="button" class="chip" data-q="${esc(d.q)}">${esc(d.q)}</button>`);
+  chips.push(`<button type="button" class="chip safety" data-q="My son swallowed a handful of my iron tablets">Safety check: a child swallowed iron tablets</button>`);
+  $("#chips").innerHTML = chips.join("");
+  $("#chips").addEventListener("click", e=>{const b=e.target.closest(".chip"); if(!b) return; $("#q").value=b.dataset.q; ask(b.dataset.q);});
+}
+
+/* ---------- Matching ---------- */
+function matchDemo(q){
+  const s = " "+q.toLowerCase()+" ";
+  let best=null, score=0;
+  for (const d of DEMO){ const n = d.match.filter(m=>s.includes(m)).length; if(n>score){score=n;best=d;} }
+  return best;
+}
+function herbsFor(q){
+  const s=q.toLowerCase();
+  return HERBS.map(h=>({h,n:h.k.filter(k=>s.includes(k)).length})).filter(x=>x.n).sort((a,b)=>b.n-a.n).slice(0,4).map(x=>x.h);
+}
+
+/* ---------- Live source fetchers (work when hosted outside the preview) ---------- */
+async function getJSON(url, ms=7000){
+  const ctl = new AbortController(); const t=setTimeout(()=>ctl.abort(),ms);
+  try{ const r = await fetch(url,{signal:ctl.signal}); if(!r.ok) throw new Error(r.status); return await r.json(); } finally{clearTimeout(t)}
+}
+function keywords(q){
+  const stop=new Set("how can i my is it a an the to of for and or in on with what are do does should if take taking shows show increase lower natural ways way help me about from be safe".split(" "));
+  return q.toLowerCase().replace(/[^a-z0-9 ]/g," ").split(/\s+/).filter(w=>w.length>2&&!stop.has(w)).slice(0,5).join(" ");
+}
+const LIVE = {
+  async pubmed(q){
+    const kw=keywords(q);
+    const s=await getJSON(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=3&sort=relevance&term=${enc(kw)}`);
+    const ids=s.esearchresult.idlist; if(!ids.length) return {count:0,items:[]};
+    const sm=await getJSON(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=${ids.join(",")}`);
+    return {count:+s.esearchresult.count, items:ids.map(id=>{const r=sm.result[id];const isRev=(r.pubtype||[]).some(p=>/review|meta-analysis|randomized/i.test(p));return {src:"pubmed",title:r.title,snippet:(r.authors||[]).slice(0,3).map(a=>a.name).join(", ")+(r.authors?.length>3?" et al.":""),meta:`${r.source} · ${(r.pubdate||"").slice(0,4)}`,url:`https://pubmed.ncbi.nlm.nih.gov/${id}/`,trust:isRev?92:84}})};
+  },
+  async ctgov(q){
+    const d=await getJSON(`https://clinicaltrials.gov/api/v2/studies?query.term=${enc(keywords(q))}&pageSize=2&countTotal=true`);
+    return {count:d.totalCount||d.studies.length, items:d.studies.map(s=>{const p=s.protocolSection;return {src:"ctgov",title:p.identificationModule.briefTitle,snippet:(p.descriptionModule?.briefSummary||"").slice(0,180)+"…",meta:`${p.statusModule.overallStatus.replace(/_/g," ").toLowerCase()} · ${p.identificationModule.nctId}`,url:`https://clinicaltrials.gov/study/${p.identificationModule.nctId}`,trust:86}})};
+  },
+  async openfda(q){
+    const terms=(herbsFor(q).map(h=>h.herb.split(" ")[0]).concat(/iron|rbc|anemi|hemoglobin/i.test(q)?["FERROUS SULFATE"]:[]));
+    const name=(terms[0]||keywords(q).split(" ")[0]||"").toUpperCase();
+    const drug=/FERROUS/.test(name);
+    const url=drug?fdaDrug(name):fdaFood(name);
+    const d=await getJSON(url);
+    const top=d.results.slice(0,5).map(r=>r.term.toLowerCase()).join(", ");
+    return {count:d.results.length, items:[{src:"openfda",title:`${name}: most reported adverse reactions`,snippet:top,meta:drug?"FAERS · live count":"CAERS · live count",url,trust:84}]};
+  },
+  async hse(q){
+    const d=await getJSON(`https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=votes&site=health&pagesize=2&q=${enc(keywords(q))}`);
+    return {count:d.items.length, items:d.items.map(i=>({src:"hse",title:i.title.replace(/&#39;/g,"'").replace(/&quot;/g,'"'),snippet:i.is_answered?`${i.answer_count} answers`:"Unanswered",meta:`Score ${i.score} · ${i.view_count} views`,url:i.link,trust:Math.min(80,55+i.score)}))};
+  },
+  async reddit(q){
+    const d=await getJSON(`https://www.reddit.com/search.json?q=${enc(keywords(q))}&sort=relevance&limit=3&type=link`);
+    const items=d.data.children.map(c=>c.data);
+    return {count:items.length, items:items.map(p=>({src:"reddit",title:p.title,snippet:(p.selftext||"").slice(0,160)||"Link post",meta:`r/${p.subreddit} · ${p.ups} upvotes · ${p.num_comments} comments`,url:"https://www.reddit.com"+p.permalink,trust:Math.min(60,35+Math.round(Math.log10(1+p.ups)*8))}))};
+  },
+  async ayur(q){ const h=herbsFor(q); return {count:h.length, items:h.slice(0,2).map(x=>({src:"ayur",title:`${x.herb} (${x.sk})`,snippet:x.use,meta:"Local herb KB",url:pm(x.sk),trust:62}))}; },
+};
+
+let sessionId = null;
+async function callBackend(q){
+  const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 45000);
+  try{
+    const r = await fetch(cfg.api.replace(/\/$/,"")+"/api/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:q,session_id:sessionId||undefined}),signal:ctl.signal});
+    const b = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(b.error || ("Backend returned "+r.status));
+    if(b.session_id) sessionId = b.session_id;
+    return b;
+  } finally { clearTimeout(t); }
+}
+// Same-origin backend (the page is served by Netlify or `npm start`)? Use it automatically.
+async function detectBackend(){
+  if(!/^https?:$/.test(location.protocol)) return false;
+  try{
+    const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 2500);
+    const r = await fetch("/api/evidence",{signal:ctl.signal}); clearTimeout(t);
+    const b = await r.json();
+    return Boolean(b && b.knowledge_base);
+  }catch(e){ return false; }
+}
+
+/* ---------- Ask flow ---------- */
+async function ask(q){
+  q=q.trim(); if(!q||busy) return;
+  busy=true; $("#go").disabled=true;
+  const out=$("#answer");
+  const crisis = screen(q);
+  ORDER.forEach(k=>setStatus(k,"","ready")); setStatus("llm","","idle");
+
+  if(crisis){ out.innerHTML = crisisCard(crisis); busy=false; $("#go").disabled=false; out.scrollIntoView({behavior:"smooth",block:"start"}); return; }
+
+  out.innerHTML = `<div class="thinking fade"><span class="spin" style="color:var(--primary)"></span><div style="flex:1"><div style="margin-bottom:8px;color:var(--ink);font-weight:600">Searching six sources for “${esc(q)}”</div><div class="skel" style="width:80%"></div><div class="skel" style="width:55%;margin-top:6px"></div></div></div>`;
+  out.scrollIntoView({behavior:"smooth",block:"start"});
+  const t0=performance.now();
+  const demo = matchDemo(q);
+  let liveResults=null, backend=null, note="";
+
+  // Live backend: the server fetches all six sources, ranks them and keeps the top 10.
+  if(cfg.api){
+    ORDER.forEach(k=>setStatus(k,"run",'<span class="spin"></span>'));
+    setStatus("llm","run",'<span class="spin"></span>');
+    let b=null, err=null;
+    try{ b = await callBackend(q); }catch(e){ err = e; }
+    const secs=((performance.now()-t0)/1000).toFixed(1);
+    if(err){
+      ORDER.forEach(k=>setStatus(k,"fail","—")); setStatus("llm","fail","error");
+      out.innerHTML = errorCard(err);
+    } else {
+      const ps = b.ranking?.per_source || {};
+      const failed = new Set((b.live_errors||[]).map(e=>BUCKET[{clinicaltrials:"trial",openfda:"fda",stackexchange:"hse"}[e.split(":")[0]] || e.split(":")[0]]));
+      ORDER.forEach(k=>{ const bk=Object.keys(BUCKET).find(x=>BUCKET[x]===k); const v=ps[bk];
+        if(failed.has(k)) setStatus(k,"fail","offline");
+        else setStatus(k, v&&v.fetched?"done":"", v?`${v.kept}/${v.fetched} kept`:"0 hits"); });
+      setStatus("llm","done","done");
+      if(b.crisis || b.behavior==="CARE") out.innerHTML = crisisCard("self");
+      else out.innerHTML = renderAnswer(fromBackend(q,b), secs, {mode:"live", ranking:b.ranking, model:b.model, provider:b.provider, errors:b.live_errors||[]});
+    }
+    busy=false; $("#go").disabled=false; return;
+  }
+
+  // fan out
+  const tasks = ORDER.map(async (k,i)=>{
+    setStatus(k,"run",'<span class="spin"></span>');
+    if(cfg.live){
+      try{ const r=await LIVE[k](q); setStatus(k,"done",`${r.count} hits`); return [k,r]; }
+      catch(e){ setStatus(k,"fail","offline"); return [k,null]; }
+    }
+    await sleep(260+i*190+Math.random()*160);
+    const n = demo ? demo.counts[k] : (k==="ayur"?herbsFor(q).length:0);
+    setStatus(k, n?"done":"", n?`${n} hits`:"0 hits");
+    return [k,null];
+  });
+  const res = await Promise.all(tasks);
+  if(cfg.live){ liveResults = Object.fromEntries(res); if(res.every(([k,r])=>!r||k==="ayur")) note="Live sources could not be reached from here, so this answer uses curated samples."; }
+
+  setStatus("llm","run",'<span class="spin"></span>');
+  if(cfg.api){
+    try{ backend = await callBackend(q); }
+    catch(e){ note = "Backend unreachable, so this answer uses curated samples."; }
+  } else { await sleep(520); }
+  setStatus("llm","done","done");
+  const secs=((performance.now()-t0)/1000).toFixed(1);
+
+  let view;
+  if(backend) view = fromBackend(q, backend);
+  else if(demo) view = {...demo, q};
+  else view = fallbackView(q);
+
+  // merge live source cards on top of demo/backend view
+  if(liveResults){
+    const live = ORDER.flatMap(k=>liveResults[k]?.items||[]);
+    if(live.length && !backend){ view = {...view, sources: view.sources.concat(live.map((s,i)=>({...s,id:view.sources.length+i+1,live:true})))}; }
+  }
+  if(backend?.crisis){ out.innerHTML = crisisCard("self"); }
+  else out.innerHTML = renderAnswer(view, secs, {note, mode: backend?"live":(liveResults?"mixed":"demo")});
+  busy=false; $("#go").disabled=false;
+}
+
+function fromBackend(q,b){
+  if(typeof b.reply==="string" && !b.summary){ return {q, summary:b.reply, clinical:[], ayurItems:herbsFor(q), ayurC:[], community:[], safety:[], flags:[], sources:b.sources||[]}; }
+  return {q, summary:b.summary, clinical:(b.clinical||[]).map(x=>({t:x.text,c:x.cites||[]})),
+    ayurItems:(b.ayurvedic||[]).map(a=>({herb:a.herb,sk:a.sanskrit,use:a.use,ev:evKey(a.evidence),evLabel:a.evidence_label,caution:a.caution,c:a.cites})),
+    ayurC:[], community:(b.community||[]).map(x=>({t:x.text,who:x.who,c:x.cites||[]})),
+    safety:(b.safety||[]).map(x=>({t:x.text,c:x.cites||[]})), flags:b.redFlags||[], sources:b.sources||[]};
+}
+
+// Backend evidence values -> badge keys. Accepts the short vocabulary (moderate | limited |
+// traditional | caution) and the knowledge base's longer wording ("moderate (mechanism)", "safety warning").
+function evKey(e){
+  const s=String(e||"").toLowerCase();
+  if(/safety|warning|caution|not supported|prescription/.test(s)) return "c";
+  if(/moderate/.test(s)) return "m";
+  if(/limited/.test(s)) return "l";
+  return "t";
+}
+function errorCard(err){
+  return `<section class="errcard fade" role="alert"><h4>Could not reach the live backend</h4>
+    <p style="margin:0 0 8px">${esc(err && err.message || err)}</p>
+    <p style="margin:0">Start it with <code>npm start</code> (needs only <code>GROQ_API_KEY</code> in <code>.env</code>), or check the backend URL under “Connect backend”.</p></section>`;
+}
+
+function fallbackView(q){
+  const herbs = herbsFor(q);
+  return {q, summary:`This demo has curated answers for blood count, blood pressure, digestion and ashwagandha with thyroid medicine. Connect the live backend to answer “${q}” with Llama 3.1 8B across all six sources.${herbs.length?" Matching entries from the Ayurvedic herb knowledge base are shown below.":""}`,
+    clinical:[], ayurItems:herbs, ayurC:[], community:[], safety:[], flags:[], sources:[], fallback:true};
+}
+
+/* ---------- Rendering ---------- */
+const EV = {t:"Traditional use",l:"Limited trials",m:"Moderate evidence",c:"Use with caution"};
+const cites = arr => (arr||[]).map(n=>`<button type="button" class="cite" data-c="${esc(n)}" aria-label="Source ${esc(n)}">[${esc(n)}]</button>`).join("");
+function avgTrust(srcs, keys){const xs=srcs.filter(s=>keys.includes(s.src)).map(s=>s.trust); return xs.length?Math.round(xs.reduce((a,b)=>a+b,0)/xs.length):null;}
+function trustColor(t){return t>=80?"var(--ok)":t>=60?"var(--ayur)":"var(--comm)";}
+
+function renderAnswer(v, secs, opt){
+  const S=v.sources||[];
+  const tc=avgTrust(S,["pubmed","ctgov","openfda"]), ta=avgTrust(S,["ayur"]), tm=avgTrust(S,["reddit","hse"]);
+  const nSrc=new Set(S.map(s=>s.src)).size;
+  const R=opt.ranking;
+  const banner = opt.mode==="demo" ? `<div class="banner fade"><b>Sample answer.</b> Curated for the demo from the six sources. Connect the backend to generate answers live with Llama 3.1 8B.</div>`
+    : opt.mode==="live" ? `<div class="banner fade"><b>Live.</b> Fetched ${R?R.candidates:S.length} items from ${R?Object.values(R.per_source||{}).filter(v=>v.fetched).length:nSrc} sources just now, ranked by relevance, trust, recency, engagement and author credibility; top ${R?R.kept:S.length} sent to ${esc(opt.model||"the model")}.${opt.errors&&opt.errors.length?` Unavailable: ${esc(opt.errors.map(e=>e.split(":")[0]).join(", "))}.`:""}</div>`
+    : (opt.note?`<div class="banner fade"><b>Note.</b> ${esc(opt.note)}</div>`:"");
+  const layerCl = v.clinical?.length ? `<article class="layer"><div class="lh"><span class="tag cl">Clinical evidence</span>${tc?`<span class="trust">trust ${tc}</span>`:""}</div><ul>${v.clinical.map(x=>`<li>${esc(x.t)}${cites(x.c)}</li>`).join("")}</ul></article>`:"";
+  const layerAy = v.ayurItems?.length ? `<article class="layer"><div class="lh"><span class="tag ay">Ayurvedic options</span>${ta?`<span class="trust">trust ${ta}</span>`:""}</div><div>${v.ayurItems.map(h=>`<div class="herb"><div><span class="hn">${esc(h.herb)}</span> <span class="sk">${esc(h.sk)}</span>${cites(h.c||v.ayurC)}</div><p>${esc(h.use)}</p><span class="ev ${h.ev}" title="${esc(h.evLabel||"")}">${EV[h.ev]||""}${h.evLabel&&!/^(limited|moderate|traditional|caution)$/i.test(h.evLabel.trim())?` · ${esc(h.evLabel)}`:""}</span>${h.caution?`<p style="color:var(--muted);font-size:12.5px;margin-top:6px"><b style="color:var(--warn)">Caution:</b> ${esc(h.caution)}</p>`:""}</div>`).join("")}</div></article>`:"";
+  const layerCm = v.community?.length ? `<article class="layer"><div class="lh"><span class="tag cm">Community insight</span>${tm?`<span class="trust">trust ${tm}</span>`:""}</div><ul>${v.community.map(x=>`<li class="quote">${esc(x.t)}${cites(x.c)}<span class="who">${esc(x.who||"")}</span></li>`).join("")}</ul></article>`:"";
+  const safety = v.safety?.length ? `<section class="safety"><h4>${icon("warn")} Safety and interactions</h4><ul>${v.safety.map(x=>`<li>${esc(x.t)}${cites(x.c)}</li>`).join("")}</ul></section>`:"";
+  const flags = v.flags?.length ? `<section class="flags"><h4>${icon("flag")} See a doctor promptly if</h4><ul>${v.flags.map(f=>`<li>${esc(f)}</li>`).join("")}</ul></section>`:"";
+  const present=[...new Set(S.map(s=>s.src))];
+  const ranked=S.filter(s=>s.rank), refs=S.filter(s=>!s.rank);
+  const keys=[...ORDER,"nih","community"].filter(k=>present.includes(k));
+  const head = ranked.length ? `Top ${ranked.length} ranked sources${R?` <span class="refs">of ${R.candidates} fetched</span>`:""}` : `Sources (${S.length})`;
+  const cards = S.length ? `<div class="srch"><h4>${head}</h4><div class="filters" id="filters"><button type="button" class="f" aria-pressed="true" data-f="all">All</button>${keys.map(k=>`<button type="button" class="f" aria-pressed="false" data-f="${k}">${SOURCES[k].name}</button>`).join("")}</div></div><div class="cards" id="cards">${(ranked.length?ranked:S).map(card).join("")}</div>${ranked.length&&refs.length?`<div class="srch"><h4 style="font-size:15px">Reference facts also cited</h4></div><div class="cards">${refs.map(card).join("")}</div>`:""}`:"";
+  return `<div class="fade" style="display:flex;flex-direction:column;gap:16px">
+    ${banner}
+    <div class="ahead"><h3>${esc(v.q)}</h3><div class="meta mono"><span>${S.length} items</span><span>${nSrc} sources</span><span>${secs}s</span><span>${esc(opt.model&&opt.model!=="mock"?opt.model:(opt.mode==="live"?"mock model (no GROQ_API_KEY)":"Llama 3.1 8B"))}</span></div></div>
+    <div class="tldr"><div class="lbl">Answer</div><p>${esc(v.summary)}</p></div>
+    ${(layerCl||layerAy||layerCm)?`<div class="layers">${layerCl}${layerAy}${layerCm}</div>`:""}
+    ${(safety||flags)?`<div class="two">${safety||"<div></div>"}${flags}</div>`:""}
+    ${cards}
+    <p class="disc">${icon("info")}<span>For information only, not medical advice. Ayurvedic and herbal products can interact with medicines. Talk to a qualified doctor before starting, stopping or combining treatments.</span></p>
+  </div>`;
+}
+function card(s){
+  const m=SOURCES[s.src]||SOURCES.pubmed;
+  const t=Number.isFinite(+s.trust)&&s.trust!==null?+s.trust:null;
+  const sc=s.score?["relevance","trust","credibility","recency","engagement"].map(k=>`<span>${k}</span><span class="bar"><i style="width:${Math.round(100*(s.score[k]||0))}%;background:var(--primary)"></i></span><span>${(s.score[k]||0).toFixed(2)}</span>`).join(""):"";
+  return `<article class="card" id="src-${esc(s.id)}" data-src="${esc(s.src)}">
+    <div class="ch">${s.rank?`<span class="rk" title="Rank by overall score">#${s.rank}</span>`:""}<div class="logo lg-${esc(s.src)}">${m.logo}</div><div style="min-width:0"><div class="s">${m.name}</div><div class="k">${esc(s.meta)}</div></div><span class="n">[${esc(s.id)}]</span></div>
+    <div class="t">${esc(s.title)}</div>
+    <div class="x">${esc(s.snippet)}</div>
+    ${s.why?`<div class="why">Why ranked: ${esc(s.why)}</div>`:""}
+    ${sc?`<details><summary class="refs" style="cursor:pointer">Score ${s.score.total.toFixed(2)} breakdown</summary><div class="sb" style="margin-top:6px">${sc}</div></details>`:""}
+    <div class="cf"><span class="tier ${m.tier}">${m.tierLbl}${s.live?" · live":""}</span>${t!==null?`<span class="meter" title="Trust score">trust<span class="bar"><i style="width:${t}%;background:${trustColor(t)}"></i></span>${t}</span>`:""}</div>
+    ${s.url?`<a href="${esc(s.url)}" target="_blank" rel="noopener">Open source ↗</a>`:""}
+  </article>`;
+}
+function crisisCard(kind){
+  const head = {self:"You don't have to go through this alone.", poison:"This may be a poisoning emergency. Act now.", emergency:"These can be signs of a medical emergency."}[kind];
+  const body = {
+    self:"If you are thinking about suicide or hurting yourself, please reach out to someone right now. Trained counselors are available any time, for free.",
+    poison:"Iron overdose is especially dangerous for children, even when they seem fine at first. Call Poison Control or emergency services now. Do not wait for symptoms and do not try to make them vomit.",
+    emergency:"Call emergency services now. Do not drive yourself if you have chest pain, trouble breathing, or signs of a stroke."
+  }[kind];
+  const lines = kind==="self"
+    ? [["988","Suicide & Crisis Lifeline (US), call or text"],["14416","Tele-MANAS (India), 24/7"],["116 123","Samaritans (UK & Ireland)"]]
+    : kind==="poison"
+    ? [["1-800-222-1222","Poison Control (US), 24/7"],["911","Emergency (US)"],["112","Emergency (India, EU)"]]
+    : [["911","Emergency (US)"],["112","Emergency (India, EU)"],["999","Emergency (UK)"]];
+  return `<section class="crisis fade" role="alert"><h3>${head}</h3><p style="margin:0;max-width:65ch">${body}</p>
+    <div class="lines">${lines.map(([n,l])=>`<div class="line"><b>${n}</b><span>${l}</span></div>`).join("")}</div>
+    <p style="margin:12px 0 0;font-size:12.5px;color:var(--muted)">Vaidya Pulse skips its normal answer when a message suggests immediate danger. Outside these regions, contact your local emergency number.</p></section>`;
+}
+function icon(n){
+  const p={warn:'<path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/>',flag:'<path d="M5 21V4h11l-2 4 2 4H5"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>'}[n];
+  return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none;margin-top:2px">${p}</svg>`;
+}
+
+/* ---------- Events ---------- */
+$("#qForm").addEventListener("submit", e=>{e.preventDefault(); ask($("#q").value);});
+$("#answer").addEventListener("click", e=>{
+  const c=e.target.closest(".cite");
+  if(c){ const el=$("#src-"+c.dataset.c); if(el){ document.querySelectorAll(".card.hl").forEach(x=>x.classList.remove("hl")); el.hidden=false; el.classList.add("hl"); el.scrollIntoView({behavior:"smooth",block:"center"}); setTimeout(()=>el.classList.remove("hl"),2200);} return; }
+  const f=e.target.closest(".f");
+  if(f){ document.querySelectorAll("#filters .f").forEach(b=>b.setAttribute("aria-pressed", b===f?"true":"false")); document.querySelectorAll("#cards .card").forEach(cd=>cd.hidden = !(f.dataset.f==="all"||cd.dataset.src===f.dataset.f)); }
+});
+const dlg=$("#settings");
+$("#openSettings").addEventListener("click",()=>{ $("#apiBase").value=cfg.api; $("#liveSrc").checked=cfg.live; try{dlg.showModal()}catch(e){dlg.setAttribute("open","")} });
+$("#saveSettings").addEventListener("click",()=>{ cfg.api=$("#apiBase").value.trim(); cfg.live=$("#liveSrc").checked; store.set("vp_api",cfg.api); store.set("vp_live",cfg.live?"1":"0"); setMode(); dlg.close(); toast(cfg.api?"Backend connected. New questions go to Llama 3.1 8B.":"Settings saved."); });
+$("#clearSettings").addEventListener("click",()=>{ cfg={api:"",live:false}; sessionId=null; store.set("vp_api",""); store.set("vp_live","0"); setMode(); dlg.close(); toast("Using curated sample answers."); });
+
+/* ---------- Boot ---------- */
+renderRail(); renderChips(); setMode();
+function bootDemo(){
+  const first=DEMO[0];
+  ORDER.forEach(k=>setStatus(k,"done",`${first.counts[k]} hits`)); setStatus("llm","done","done");
+  $("#q").value=first.q;
+  $("#answer").innerHTML = renderAnswer({...first}, (first.ms/1000).toFixed(1), {mode:"demo"});
+}
+function bootLive(){
+  $("#answer").innerHTML = `<div class="banner fade"><b>Live.</b> Connected to the backend. Ask anything: every question is fetched live from six sources, ranked, and answered by ${"Llama 3.1 8B"}.</div>`;
+  $("#q").focus();
+}
+if(cfg.api){ bootLive(); }
+else detectBackend().then(ok=>{
+  if(ok){ cfg.api=location.origin; setMode(); bootLive(); }
+  else bootDemo();
+});
+})();
+</script>
+
+</body>
+</html>
