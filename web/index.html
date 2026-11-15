@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}.ci-link{text-decoration:none;color:inherit;gap:6px}
+.ci-new{display:inline-block;background:var(--comm-soft);color:var(--comm);border-radius:999px;padding:1px 8px;font-size:11px;font-weight:700;letter-spacing:.02em}
+.ci-banner{display:block;margin-top:14px;padding:10px 14px;border:1px solid var(--comm-soft);border-radius:12px;background:var(--comm-soft);color:inherit;text-decoration:none;font-size:14px}
+.ci-banner:hover{filter:brightness(.97)}
+.ci-more{margin-left:auto;font-size:12px;color:var(--comm);text-decoration:none}
+</style>
 </head>
 <body>
 <title>Vaidya Pulse</title>
@@ -375,6 +380,7 @@ footer.foot{margin-top:56px;border-top:1px solid var(--line);padding-block:22px 
     <div class="top-right">
       <span class="pill" id="modePill" title="Where answers come from"><span class="dot" id="modeDot"></span><span id="modeTxt">Demo mode</span></span>
       <span class="pill" id="modelPill"><span class="logo lg-llm" style="width:18px;height:18px;border-radius:5px;font-size:9px">L3</span><span id="modelTxt">Llama 3.1 8B · Groq</span></span>
+      <a class="pill ci-link" href="/community/" title="CollectiveMind: 29 community topics with verdicts and risk flags"><span class="ci-new">New</span>Community Insights</a>
       <button class="btn-ghost" id="openSettings" type="button">Connect backend</button>
     </div>
   </div>
@@ -391,6 +397,7 @@ footer.foot{margin-top:56px;border-top:1px solid var(--line);padding-block:22px 
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         <button type="button" class="btn-lg sec" id="heroTour">Run the guided demo</button>
       </div>
+      <a class="ci-banner" href="/community/"><span class="ci-new">CollectiveMind</span> <b>Community Insights:</b> 29 health topics distilled from reader comments, with consensus, disagreements and risk flags &rarr;</a>
       <div class="stats">
         <div class="stat"><b>6</b><span>sources queried live per question</span></div>
         <div class="stat"><b>5</b><span>ranking signals, shown on every card</span></div>
@@ -1157,7 +1164,7 @@ function renderAnswer(v, secs, opt){
     : (opt.note?`<div class="banner fade"><b>Note.</b> ${esc(opt.note)}</div>`:"");
   const layerCl = v.clinical?.length ? `<article class="layer"><div class="lh"><span class="tag cl">Clinical evidence</span>${tc?`<span class="trust">trust ${tc}</span>`:""}</div><ul>${v.clinical.map(x=>`<li>${esc(x.t)}${cites(x.c)}</li>`).join("")}</ul></article>`:"";
   const layerAy = v.ayurItems?.length ? `<article class="layer"><div class="lh"><span class="tag ay">Ayurvedic options</span>${ta?`<span class="trust">trust ${ta}</span>`:""}</div><div>${v.ayurItems.map(h=>`<div class="herb"><div><span class="hn">${esc(h.herb)}</span> <span class="sk">${esc(h.sk)}</span>${cites(h.c||v.ayurC)}</div><p>${esc(h.use)}</p><span class="ev ${h.ev}" title="${esc(h.evLabel||"")}">${EV[h.ev]||""}${h.evLabel&&!/^(limited|moderate|traditional|caution)$/i.test(h.evLabel.trim())?` · ${esc(h.evLabel)}`:""}</span>${h.caution?`<p style="color:var(--muted);font-size:12.5px;margin-top:6px"><b style="color:var(--warn)">Caution:</b> ${esc(h.caution)}</p>`:""}</div>`).join("")}</div></article>`:"";
-  const layerCm = v.community?.length ? `<article class="layer"><div class="lh"><span class="tag cm">Community insight</span>${tm?`<span class="trust">trust ${tm}</span>`:""}</div><ul>${v.community.map(x=>`<li class="quote">${esc(x.t)}${cites(x.c)}<span class="who">${esc(x.who||"")}</span></li>`).join("")}</ul></article>`:"";
+  const layerCm = v.community?.length ? `<article class="layer"><div class="lh"><span class="tag cm">Community insight</span>${tm?`<span class="trust">trust ${tm}</span>`:""}<a class="ci-more" href="/community/" target="_blank" rel="noopener">See reader verdicts &rarr;</a></div><ul>${v.community.map(x=>`<li class="quote">${esc(x.t)}${cites(x.c)}<span class="who">${esc(x.who||"")}</span></li>`).join("")}</ul></article>`:"";
   const safety = v.safety?.length ? `<section class="safety"><h4>${icon("warn")} Safety and interactions</h4><ul>${v.safety.map(x=>`<li>${esc(x.t)}${cites(x.c)}</li>`).join("")}</ul></section>`:"";
   const flags = v.flags?.length ? `<section class="flags"><h4>${icon("flag")} See a doctor promptly if</h4><ul>${v.flags.map(f=>`<li>${esc(f)}</li>`).join("")}</ul></section>`:"";
   const present=[...new Set(S.map(s=>s.src))];
