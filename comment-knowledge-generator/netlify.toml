@@ -1,4 +1,0 @@
-# Optional: deploy public/ (your published site + the browser test runner) on Netlify.
-# Publish your real site into public/ first:  publish_cards.py ... --site public/index.html
-[build]
-  publish = "public"
